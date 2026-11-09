@@ -13,6 +13,7 @@ export interface OfferRow {
   creator_id: string;
   company_id: string;
   name: string;
+  title?: string | null;
   description: string | null;
   price_amount: number;
   currency: string;
@@ -48,7 +49,7 @@ export const mapOfferRowToPlatformOffer = (
 
   return {
     id: row.id,
-    title: row.name,
+    title: row.title?.trim() || row.name,
     companyId: row.company_id,
     creatorId: row.creator_id,
     companyName: companyName || "Mansa",
@@ -331,6 +332,7 @@ export async function upsertOfferToSupabase(input: {
     creator_id: creatorUid,
     company_id: input.companyId,
     name: input.name.trim(),
+    title: input.name.trim(),
     description: input.description?.trim() || "",
     price_amount: isFree ? 0 : input.priceAmount,
     currency: input.currency || "XOF",
