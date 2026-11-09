@@ -1,8 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OfferCheckoutModal } from "@/mansa/components/dashboard/OfferCheckoutModal";
 import { prepareTemporaryFreeCheckoutOffer } from "@/mansa/utils/temporaryFreeAccess";
 import type { CreatorPlatformOffer } from "@/mansa/types";
+import { persistFreeMemberEntitlement } from "@/mansa/services/dbService";
+
+vi.mock("@/mansa/services/dbService", () => ({
+  createRealTransaction: vi.fn().mockResolvedValue(undefined),
+  persistFreeMemberEntitlement: vi.fn().mockResolvedValue(undefined),
+  persistVerifiedMemberEntitlement: vi.fn().mockResolvedValue(undefined),
+}));
 
 const paidOffer: CreatorPlatformOffer = {
   id: "offer-scalping",
@@ -26,6 +33,10 @@ const freeOffer: CreatorPlatformOffer = {
 };
 
 describe("temporary free checkout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("converts an offer to zero cost for a non-manager, without mutating its source", () => {
     const checkoutOffer = prepareTemporaryFreeCheckoutOffer(paidOffer, false, true);
 
@@ -101,6 +112,26 @@ describe("temporary free checkout", () => {
         includedApps: expect.arrayContaining(["Telegram", "Discord"]),
       }),
     );
+  });
+
+  it("shows the persistence error returned by Supabase instead of hiding it", async () => {
+    const supabaseError = "Impossible d'obtenir cette offre gratuite : Offre non réclamable";
+    vi.mocked(persistFreeMemberEntitlement).mockRejectedValueOnce(new Error(supabaseError));
+
+    render(
+      <OfferCheckoutModal
+        isOpen
+        onClose={() => {}}
+        offer={freeOffer}
+        user={{ uid: "test-customer", name: "Client test", email: "client@example.test" }}
+        onPaymentSuccess={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Rejoindre gratuitement" }));
+
+    expect(await screen.findByText(supabaseError)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Bienvenue !" })).not.toBeInTheDocument();
   });
 
   it("keeps the paid price for managers or when temporary access is disabled", () => {

@@ -347,7 +347,11 @@ export const OfferCheckoutModal: React.FC<OfferCheckoutModalProps> = ({
       } catch (error) {
         console.error("Free product entitlement could not be recorded:", error);
         setIsProcessing(false);
-        setPaymentError("Une erreur est survenue. Réessayez.");
+        setPaymentError(
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "Impossible d’enregistrer votre accès gratuit. Réessayez.",
+        );
         return;
       }
     }

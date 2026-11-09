@@ -1,7 +1,5 @@
 // @ts-nocheck
 import type { EnterpriseSubscription } from "../types";
-import { joinCommunityRpc } from "../services/supabaseCommunityService";
-import { claimFreeOfferRpc } from "../services/supabaseOfferService";
 import {
   getMemberAuthorizedTelegramChannels,
   getMemberAuthorizedDiscordChannels,
@@ -148,26 +146,6 @@ export function saveSubscription(
   }
 
   runtimeSubscriptionsCache.set(userKey, updated);
-
-  // Synchronisation Supabase via RPCs
-  if (compId && newSub.hasJoined !== false && !newSub.isCommunityPreview) {
-    // 1. Rejoindre la communauté via join_community() RPC
-    void joinCommunityRpc(compId).catch((err) => {
-      console.warn("Notice: joinCommunityRpc call:", err?.message || err);
-    });
-
-    // 2. Si une offre gratuite est débloquée, enregistrer via claim_free_offer() RPC
-    const freeOffersToClaim = (newSub.unlockedProductIds || []).filter(
-      (id) => !newSub.hasPaidOffer,
-    );
-    for (const freeOfferId of freeOffersToClaim) {
-      if (freeOfferId && !freeOfferId.startsWith("comp-")) {
-        void claimFreeOfferRpc(freeOfferId).catch((err) => {
-          console.warn("Notice: claimFreeOfferRpc call:", err?.message || err);
-        });
-      }
-    }
-  }
 
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("mansa_subscription_updated", { detail: newSub }));

@@ -1,12 +1,55 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EnterpriseMemberView } from "@/mansa/components/dashboard/EnterpriseMemberView";
+import { getSavedSubscriptions } from "@/mansa/utils/subscriptionsStorage";
+
+const {
+  fetchMemberCommunitiesMock,
+  persistFreeMemberEntitlementMock,
+  subscribeToCompanyOffersMock,
+  getMemberProductsByIdsMock,
+} = vi.hoisted(() => ({
+  fetchMemberCommunitiesMock: vi.fn().mockResolvedValue(["company-member-apps-test"]),
+  persistFreeMemberEntitlementMock: vi.fn().mockResolvedValue(undefined),
+  subscribeToCompanyOffersMock: vi.fn(),
+  getMemberProductsByIdsMock: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/mansa/services/supabaseCommunityService", async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchMemberCommunities: fetchMemberCommunitiesMock,
+}));
+
+vi.mock("@/mansa/services/dbService", async (importOriginal) => ({
+  ...(await importOriginal()),
+  persistFreeMemberEntitlement: persistFreeMemberEntitlementMock,
+  subscribeToCompanyOffers: subscribeToCompanyOffersMock,
+  getMemberProductsByIds: getMemberProductsByIdsMock,
+}));
 
 const companyId = "company-member-apps-test";
 const freeProductId = "offer-free-apps-test";
 
 beforeEach(() => {
   localStorage.clear();
+  subscribeToCompanyOffersMock.mockImplementation((_companyId, callback) => {
+    callback([
+      {
+        id: "offer-free-apps-test",
+        title: "Produit gratuit test",
+        companyId: "company-member-apps-test",
+        companyName: "Communauté test",
+        category: "community",
+        priceDisplay: "Gratuit",
+        priceAmount: 0,
+        currency: "XOF",
+        pricingType: "free",
+        billingCycle: "one_time",
+        includedApps: ["Telegram", "Discord", "Fichiers", "Cours & formations"],
+      },
+    ]);
+    return () => {};
+  });
 });
 
 afterEach(() => {
@@ -117,9 +160,7 @@ describe("applications d’une offre gratuite dans l’espace membre", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accéder à l'entreprise" }));
 
-    const savedSubscriptions = JSON.parse(
-      localStorage.getItem("mansa_enterprise_subscriptions_member-test") || "[]",
-    );
+    const savedSubscriptions = getSavedSubscriptions("member-test");
     expect(savedSubscriptions[0].unlockedProductIds).toContain(freeProductId);
     expect(savedSubscriptions[0].purchasedOfferIds).toContain(freeProductId);
     expect(await screen.findByRole("button", { name: "Fichiers" })).toBeInTheDocument();

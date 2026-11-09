@@ -36,6 +36,7 @@ import {
   deleteOfferFromSupabase,
   claimFreeOfferRpc,
 } from "./supabaseOfferService";
+import { joinCommunityRpc } from "./supabaseCommunityService";
 import {
   fetchUserProfile,
   updateUserProfileInSupabase,
@@ -480,7 +481,11 @@ export async function persistFreeMemberEntitlement(input: {
   companyId: string;
   verifiedAt?: string;
 }): Promise<void> {
-  if (!input.productId) return;
+  if (!input.memberUid) throw new Error("Connectez-vous à votre compte Mansa avant de continuer.");
+  if (!input.companyId) throw new Error("La communauté de cette offre est introuvable.");
+  if (!input.productId) throw new Error("L’identifiant de l’offre gratuite est manquant.");
+
+  await joinCommunityRpc(input.companyId);
   await claimFreeOfferRpc(input.productId);
 }
 

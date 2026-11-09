@@ -105,7 +105,10 @@ import {
   getSavedCompanies,
   subscribeToDiscoverableCompany,
 } from "../../utils/companyStorage";
-import { joinCommunityRpc } from "../../services/supabaseCommunityService";
+import {
+  fetchMemberCommunities,
+  joinCommunityRpc,
+} from "../../services/supabaseCommunityService";
 import {
   appendLocalSupportMessage,
   getLocalSupportConversation,
@@ -863,36 +866,59 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
     }));
   };
 
+  // L’adhésion est relue depuis Supabase : le cache local n’est pas une source d’autorité.
+  React.useEffect(() => {
+    let isActive = true;
+    const memberId = user?.uid;
+    const communityId = (currentSub.companyId || currentSub.id).replace(/^preview-/, "");
+
+    if (!memberId || !communityId || currentSub.isCommunityPreview) {
+      setIsJoinedLocally(false);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setIsJoinedLocally(null);
+    void fetchMemberCommunities(memberId)
+      .then((communityIds) => {
+        if (isActive) setIsJoinedLocally(communityIds.includes(communityId));
+      })
+      .catch((error) => {
+        console.error("Impossible de vérifier l’adhésion à la communauté:", error);
+        if (isActive) setIsJoinedLocally(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [user?.uid, currentSub.companyId, currentSub.id, currentSub.isCommunityPreview]);
+
   // Check whether the user has joined this enterprise
   const isEnterpriseJoined = React.useMemo(() => {
-    if (isJoinedLocally !== null) return isJoinedLocally;
-    if (currentSub.hasJoined === false || currentSub.isCommunityPreview) return false;
-    const userKey = user?.uid || user?.email || "default";
-    try {
-      const leftKey = `mansa_left_enterprises_${userKey}`;
-      const leftList: string[] = JSON.parse(localStorage.getItem(leftKey) || "[]");
-      const compId = currentSub.companyId || currentSub.id;
-      if (leftList.includes(currentSub.id) || leftList.includes(compId)) {
-        return false;
-      }
-    } catch {}
-    const exists = allSubscriptions.some(
-      (s) =>
-        (s.id === currentSub.id ||
-          s.companyId === currentSub.companyId ||
-          s.companyId === currentSub.id) &&
-        s.hasJoined !== false,
-    );
-    if (!exists && (currentSub.isCommunityPreview || currentSub.id.startsWith("preview-"))) {
-      return false;
-    }
-    return exists || currentSub.hasJoined === true || currentSub.status === "active";
-  }, [currentSub, allSubscriptions, user, isJoinedLocally]);
+    if (currentSub.isCommunityPreview) return false;
+    return isJoinedLocally === true;
+  }, [currentSub.isCommunityPreview, isJoinedLocally]);
 
   // Handler: Join enterprise
-  const handleJoinEnterprise = () => {
+  const handleJoinEnterprise = async () => {
     const userKey = user?.uid || user?.email || "default";
     const compId = currentSub.companyId || currentSub.id;
+
+    if (!user?.uid || !compId) return;
+
+    try {
+      await joinCommunityRpc(compId);
+      const communityIds = await fetchMemberCommunities(user.uid);
+      if (!communityIds.includes(compId)) {
+        setIsJoinedLocally(false);
+        return;
+      }
+    } catch (error) {
+      console.error("Impossible de rejoindre la communauté:", error);
+      setIsJoinedLocally(false);
+      return;
+    }
 
     try {
       const leftKey = `mansa_left_enterprises_${userKey}`;
@@ -913,9 +939,6 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
 
     saveSubscription(userKey, joinedSub);
     saveSubscription("default", joinedSub);
-    void joinCommunityRpc(compId).catch((err) =>
-      console.warn("Notice: joinCommunityRpc call failed:", err),
-    );
 
     setIsJoinedLocally(true);
     setCurrentSub(joinedSub);
@@ -946,7 +969,15 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
       removeSubscription("default", currentSub.companyId);
     }
 
-    setIsJoinedLocally(false);
+    setIsJoinedLocally(null);
+    if (user?.uid) {
+      void fetchMemberCommunities(user.uid)
+        .then((communityIds) => setIsJoinedLocally(communityIds.includes(compId)))
+        .catch((error) => {
+          console.error("Impossible de vérifier l’adhésion après le retrait:", error);
+          setIsJoinedLocally(false);
+        });
+    }
     setCurrentSub((prev) => ({ ...prev, hasJoined: false }));
 
     window.dispatchEvent(
