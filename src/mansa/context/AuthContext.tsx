@@ -28,6 +28,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_REQUEST_TIMEOUT_MS = 15_000;
+const AUTH_TIMEOUT_MESSAGE =
+  "L'authentification Supabase prend trop de temps. Vérifiez votre connexion, puis réessayez.";
+
+const withAuthTimeout = <T,>(request: Promise<T>): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(AUTH_TIMEOUT_MESSAGE)), AUTH_REQUEST_TIMEOUT_MS);
+    request.then(
+      (result) => {
+        clearTimeout(timeout);
+        resolve(result);
+      },
+      (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+
 // Clean up old insecure local auth keys
 const cleanupLegacyLocalStorage = () => {
   try {
@@ -91,12 +110,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isMounted = true;
 
     // Get current session from Supabase
-    supabase.auth
-      .getSession()
+    withAuthTimeout(supabase.auth.getSession())
       .then(({ data: { session }, error: sessionError }) => {
         if (!isMounted) return;
         if (sessionError) {
           console.error("Supabase getSession error:", sessionError);
+          setError("Impossible de vérifier votre session Supabase. Vérifiez votre connexion et réessayez.");
+        } else {
+          setError(null);
         }
         if (session?.user) {
           const appUser = mapSupabaseUserToAppUser(session.user);
@@ -109,6 +130,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       .catch((err) => {
         console.error("Erreur lors de la récupération de la session Supabase:", err);
+        if (isMounted) {
+          setError(
+            err?.message === AUTH_TIMEOUT_MESSAGE
+              ? AUTH_TIMEOUT_MESSAGE
+              : "Impossible de vérifier votre session Supabase. Vérifiez votre connexion et réessayez.",
+          );
+        }
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -123,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const appUser = mapSupabaseUserToAppUser(session.user);
           setUser(appUser);
           setProfile(buildUserProfile(appUser));
+          setError(null);
         } else {
           setUser(null);
           setProfile(null);
@@ -150,10 +179,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setLoading(true);
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: pass,
-      });
+      const { data, error: signInError } = await withAuthTimeout(
+        supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: pass,
+        }),
+      );
 
       if (signInError) {
         throw signInError;
@@ -185,16 +216,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       const displayName = name?.trim() || email.split("@")[0] || "Créateur";
 
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: pass,
-        options: {
-          data: {
-            full_name: displayName,
-            display_name: displayName,
+      const { data, error: signUpError } = await withAuthTimeout(
+        supabase.auth.signUp({
+          email: email.trim(),
+          password: pass,
+          options: {
+            data: {
+              full_name: displayName,
+              display_name: displayName,
+            },
           },
-        },
-      });
+        }),
+      );
 
       if (signUpError) {
         throw signUpError;

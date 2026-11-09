@@ -22,12 +22,15 @@ vi.mock("../mansa/services/supabase", () => {
 });
 
 function TestConsumer() {
-  const { user, loading, signInWithEmail, logout } = useAuth();
+  const { user, loading, error, signInWithEmail, logout } = useAuth();
   if (loading) return <div>Chargement...</div>;
   return (
     <div>
       <div data-testid="user-status">{user ? `Connecté: ${user.email}` : "Déconnecté"}</div>
-      <button onClick={() => signInWithEmail("test@example.com", "password123")}>Connexion</button>
+      {error && <div data-testid="auth-error">{error}</div>}
+      <button onClick={() => void signInWithEmail("test@example.com", "password123").catch(() => {})}>
+        Connexion
+      </button>
       <button onClick={() => logout()}>Déconnexion</button>
     </div>
   );
@@ -92,5 +95,51 @@ describe("AuthContext with Supabase", () => {
     });
 
     expect(supabase.auth.signOut).toHaveBeenCalled();
+  });
+
+  it("shows a clear error instead of an endless spinner when session initialization times out", async () => {
+    vi.useFakeTimers();
+    vi.mocked(supabase.auth.getSession).mockImplementationOnce(() => new Promise(() => {}) as any);
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(screen.getByTestId("user-status")).toHaveTextContent("Déconnecté");
+    expect(screen.getByTestId("auth-error")).toHaveTextContent("L'authentification Supabase prend trop de temps");
+    vi.useRealTimers();
+  });
+
+  it("stops waiting when the sign-in request times out", async () => {
+    vi.useFakeTimers();
+    vi.mocked(supabase.auth.signInWithPassword).mockImplementationOnce(() => new Promise(() => {}) as any);
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      screen.getByText("Connexion").click();
+    });
+    expect(screen.getByText("Chargement...")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000);
+    });
+
+    expect(screen.getByTestId("user-status")).toHaveTextContent("Déconnecté");
+    expect(screen.getByTestId("auth-error")).toHaveTextContent("L'authentification Supabase prend trop de temps");
+    vi.useRealTimers();
   });
 });
