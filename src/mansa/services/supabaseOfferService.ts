@@ -491,6 +491,139 @@ export async function upsertOfferToSupabase(input: {
   return offerId;
 }
 
+export interface CreatorCourseModuleInput {
+  title: string;
+  content?: string;
+  videoUrl?: string;
+}
+
+/** Enregistre un cours et ses modules dans les tables déjà lues par l’espace membre. */
+export async function saveCreatorCourseToOffer(input: {
+  offerId: string;
+  title: string;
+  description: string;
+  modules: CreatorCourseModuleInput[];
+  courseRowId?: string;
+}): Promise<string> {
+  const session = await requireActiveSupabaseSession();
+  const { data: offer, error: offerReadError } = await supabase
+    .from("offers")
+    .select("id, creator_id, included_apps")
+    .eq("id", input.offerId)
+    .maybeSingle();
+
+  if (offerReadError) throw new Error(`Impossible de vérifier l’offre : ${offerReadError.message}`);
+  if (!offer) throw new Error("L’offre associée au cours est introuvable.");
+  if (offer.creator_id !== session.user.id) {
+    throw new Error("Vous n’êtes pas autorisé à modifier cette offre.");
+  }
+
+  const includedApps = Array.isArray(offer.included_apps) ? offer.included_apps : [];
+  if (!includedApps.some((app: string) => app.toLowerCase().includes("cours"))) {
+    const { error } = await supabase
+      .from("offers")
+      .update({ included_apps: [...includedApps, "Cours & formations"] })
+      .eq("id", input.offerId)
+      .eq("creator_id", session.user.id);
+    if (error) throw new Error(`Impossible de publier l’application Cours : ${error.message}`);
+  }
+
+  let courseRowId = input.courseRowId;
+  if (courseRowId) {
+    const { data: existingCourse, error } = await supabase
+      .from("offer_courses")
+      .select("id")
+      .eq("id", courseRowId)
+      .eq("offer_id", input.offerId)
+      .maybeSingle();
+    if (error) throw new Error(`Impossible de vérifier le cours : ${error.message}`);
+    if (!existingCourse) courseRowId = undefined;
+  }
+
+  if (!courseRowId) {
+    const { data: matchingCourse, error } = await supabase
+      .from("offer_courses")
+      .select("id")
+      .eq("offer_id", input.offerId)
+      .eq("title", input.title)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`Impossible de rechercher le cours : ${error.message}`);
+    courseRowId = matchingCourse?.id;
+  }
+
+  if (courseRowId) {
+    const { error } = await supabase
+      .from("offer_courses")
+      .update({ title: input.title, description: input.description })
+      .eq("id", courseRowId)
+      .eq("offer_id", input.offerId);
+    if (error) throw new Error(`Impossible de mettre à jour le cours : ${error.message}`);
+  } else {
+    const { data: createdCourse, error } = await supabase
+      .from("offer_courses")
+      .insert({ offer_id: input.offerId, title: input.title, description: input.description })
+      .select("id")
+      .single();
+    if (error) throw new Error(`Impossible d’enregistrer le cours : ${error.message}`);
+    courseRowId = createdCourse?.id;
+  }
+
+  if (!courseRowId) throw new Error("Supabase n’a pas renvoyé l’identifiant du cours enregistré.");
+
+  const { error: deleteModulesError } = await supabase
+    .from("course_modules")
+    .delete()
+    .eq("course_id", courseRowId);
+  if (deleteModulesError) {
+    throw new Error(`Impossible de mettre à jour les chapitres : ${deleteModulesError.message}`);
+  }
+
+  const modulePayload = input.modules.map((module, index) => ({
+    course_id: courseRowId,
+    title: module.title || `Module ${index + 1}`,
+    content: module.content || "",
+    video_url: module.videoUrl || null,
+    sort_order: index,
+  }));
+  if (modulePayload.length > 0) {
+    const { error } = await supabase.from("course_modules").insert(modulePayload);
+    if (error) throw new Error(`Impossible d’enregistrer les chapitres : ${error.message}`);
+  }
+
+  return courseRowId;
+}
+
+/** Retire le cours d’une offre lorsque le créateur la délie explicitement. */
+export async function deleteCreatorCourseFromOffer(input: {
+  offerId: string;
+  courseRowId: string;
+}): Promise<void> {
+  const session = await requireActiveSupabaseSession();
+  const { data: offer, error: offerReadError } = await supabase
+    .from("offers")
+    .select("id, creator_id")
+    .eq("id", input.offerId)
+    .maybeSingle();
+  if (offerReadError) throw new Error(`Impossible de vérifier l’offre : ${offerReadError.message}`);
+  if (!offer || offer.creator_id !== session.user.id) {
+    throw new Error("Vous n’êtes pas autorisé à modifier cette offre.");
+  }
+
+  const { error: moduleError } = await supabase
+    .from("course_modules")
+    .delete()
+    .eq("course_id", input.courseRowId);
+  if (moduleError) throw new Error(`Impossible de retirer les chapitres : ${moduleError.message}`);
+
+  const { error } = await supabase
+    .from("offer_courses")
+    .delete()
+    .eq("id", input.courseRowId)
+    .eq("offer_id", input.offerId);
+  if (error) throw new Error(`Impossible de retirer le cours de l’offre : ${error.message}`);
+}
+
 /**
  * Suppression d'un produit dans Supabase (offers + tables liées)
  */

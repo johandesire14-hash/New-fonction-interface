@@ -102,6 +102,12 @@ import {
 } from "../../utils/companyPostsStorage";
 import { getMemberProductsByIds, subscribeToCompanyOffers } from "../../services/dbService";
 import {
+  deleteCreatorCourseFromOffer,
+  fetchCompanyOffersFromSupabase,
+  saveCreatorCourseToOffer,
+} from "../../services/supabaseOfferService";
+import { dispatchProductUpdates } from "../../utils/productUpdateEvents";
+import {
   updateCompanyBranding,
   getSavedCompanies,
   subscribeToDiscoverableCompany,
@@ -1217,6 +1223,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
       courseModules?: any[];
       chapters: string[];
       chapterContents?: string[];
+      supabaseCourseIds?: Record<string, string>;
       updatedAt: string;
     }>
   >([]);
@@ -1396,6 +1403,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
             await saveDigitalAsset(companyId, `${courseId}-attachment`, creatorAttachmentFile)
           ).storageKey;
         }
+        const previousCourse = creatorCourses.find((item) => item.id === courseId);
         const course = {
           id: courseId,
           productIds: linkedCreatorProductIds,
@@ -1420,33 +1428,39 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
           })),
           updatedAt: new Date().toISOString(),
         };
-        const nextCourses = [...creatorCourses.filter((item) => item.id !== course.id), course];
-        const updatedOffers = enterpriseOffers.map((off) => {
-          const oldCourse = creatorCourses.find((item) => item.id === course.id);
-          const wasLinked = oldCourse?.productIds?.includes(off.id);
-          const isLinked = linkedCreatorProductIds.includes(off.id);
-          if (!wasLinked && !isLinked) return off;
-          const existingCourses = (off.courses || []).filter((item: any) => item.id !== course.id);
-          const modules = (off.courseModules || []).filter(
-            (item: any) => !String(item.id || "").startsWith(`${course.id}-chapter-`),
-          );
-          const nextCourses = isLinked ? [...existingCourses, course] : existingCourses;
-          const nextModules = isLinked ? [...modules, ...course.courseModules] : modules;
-          return {
-            ...off,
-            courses: nextCourses,
-            courseModules: nextModules,
-            includedApps: isLinked
-              ? Array.from(new Set([...(off.includedApps || []), "Cours & formations"]))
-              : nextCourses.length || nextModules.length
-                ? off.includedApps
-                : (off.includedApps || []).filter((app: string) => app !== "Cours & formations"),
-          };
-        });
-        try {
-          localStorage.removeItem(`mansa_creator_offers_${companyId}`);
-        } catch {}
+        const supabaseCourseIds = { ...(previousCourse?.supabaseCourseIds || {}) };
+        for (const [offerId, remoteCourseId] of Object.entries(supabaseCourseIds)) {
+          if (!linkedCreatorProductIds.includes(offerId)) {
+            await deleteCreatorCourseFromOffer({ offerId, courseRowId: remoteCourseId });
+            delete supabaseCourseIds[offerId];
+          }
+        }
+        for (const offerId of linkedCreatorProductIds) {
+          const existingRemoteCourse = enterpriseOffers
+            .find((offer) => offer.id === offerId)
+            ?.courses?.find((item: any) => item.title === previousCourse?.title);
+          supabaseCourseIds[offerId] = await saveCreatorCourseToOffer({
+            offerId,
+            title: course.title,
+            description: course.description,
+            courseRowId: supabaseCourseIds[offerId] || existingRemoteCourse?.id,
+            modules: course.courseModules.map((module: any, index: number) => ({
+              title: module.title,
+              content: module.content,
+              videoUrl: index === 0 ? course.youtubeUrl : "",
+            })),
+          });
+        }
+        const savedCourse = { ...course, supabaseCourseIds };
+        const nextCourses = [
+          ...creatorCourses.filter((item) => item.id !== course.id),
+          savedCourse,
+        ];
+        localStorage.setItem(`mansa_creator_courses_${companyId}`, JSON.stringify(nextCourses));
         setCreatorCourses(nextCourses);
+        const refreshedOffers = await fetchCompanyOffersFromSupabase(companyOffersId, true);
+        setEnterpriseOffers(refreshedOffers);
+        dispatchProductUpdates();
         setEditingCreatorCourseId(null);
         setCourseCreationStep("library");
         setCreatorAppStep("closed");
