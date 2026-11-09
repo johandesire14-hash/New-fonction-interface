@@ -7,6 +7,8 @@ import type {
   EbookResourceItem,
   CourseResourceItem,
 } from "../types";
+import { getCurrencySymbol } from "../utils/currency";
+import { fetchCommunityById } from "./supabaseCommunityService";
 
 export interface OfferRow {
   id: string;
@@ -36,9 +38,11 @@ export const mapOfferRowToPlatformOffer = (
     ebooks?: EbookResourceItem[];
     digitalFiles?: any[];
   },
+  communityCurrency?: string,
 ): CreatorPlatformOffer => {
   const isFree = row.pricing_type === "free" || row.price_amount === 0;
-  const currencySymbol = row.currency === "EUR" ? "€" : row.currency === "USD" ? "$" : "FCFA";
+  const currency = communityCurrency || row.currency || "XOF";
+  const currencySymbol = getCurrencySymbol(currency);
   const priceDisplay = isFree
     ? "Gratuit"
     : row.billing_cycle === "monthly"
@@ -58,7 +62,7 @@ export const mapOfferRowToPlatformOffer = (
     type: "membership",
     priceDisplay,
     priceAmount: isFree ? 0 : row.price_amount,
-    currency: row.currency || "XOF",
+    currency,
     pricingType: isFree ? "free" : "paid",
     billingCycle: row.billing_cycle || "monthly",
     description: row.description || "",
@@ -76,6 +80,7 @@ export const mapOfferRowToBusinessProject = (
   companyName: string = "",
   digitalFiles: any[] = [],
   courseModules: any[] = [],
+  communityCurrency?: string,
 ): BusinessProject => {
   const isFree = row.pricing_type === "free" || row.price_amount === 0;
   return {
@@ -86,7 +91,7 @@ export const mapOfferRowToBusinessProject = (
     category: "community",
     pricingAmount: isFree ? 0 : row.price_amount,
     pricingModel: row.billing_cycle === "one_time" ? "one_time" : "subscription",
-    currency: row.currency || "XOF",
+    currency: communityCurrency || row.currency || "XOF",
     targetAudience: "Membres et Acheteurs",
     status: row.status === "paused" ? "paused" : "active",
     features: [
@@ -133,6 +138,9 @@ export async function fetchCompanyOffersFromSupabase(
     console.warn("Notice: fetchCompanyOffersFromSupabase:", offersError?.message);
     return [];
   }
+
+  const community = await fetchCommunityById(companyId);
+  const communityCurrency = community?.primaryCurrency;
 
   // Enrichir chaque offre avec ses ressources liées (fichiers, canaux, cours)
   const offersWithResources = await Promise.all(
@@ -207,7 +215,7 @@ export async function fetchCompanyOffersFromSupabase(
         discordChannels,
         ebooks,
         courses,
-      });
+      }, communityCurrency);
     }),
   );
 
@@ -240,6 +248,17 @@ export async function fetchCreatorOffersFromSupabase(
     console.warn("Notice: fetchCreatorOffersFromSupabase:", error?.message);
     return [];
   }
+
+  const communityIds = [...new Set(offersData.map((row) => row.company_id).filter(Boolean))];
+  const communityCurrencies = new Map<string, string>();
+  await Promise.all(
+    communityIds.map(async (communityId) => {
+      const community = await fetchCommunityById(communityId);
+      if (community?.primaryCurrency) {
+        communityCurrencies.set(communityId, community.primaryCurrency);
+      }
+    }),
+  );
 
   const projects = await Promise.all(
     offersData.map(async (row) => {
@@ -279,7 +298,13 @@ export async function fetchCreatorOffersFromSupabase(
         })),
       );
 
-      return mapOfferRowToBusinessProject(row, "", digitalFiles, courseModules);
+      return mapOfferRowToBusinessProject(
+        row,
+        "",
+        digitalFiles,
+        courseModules,
+        communityCurrencies.get(row.company_id),
+      );
     }),
   );
 
@@ -320,6 +345,9 @@ export async function upsertOfferToSupabase(input: {
     throw new Error("Sélectionnez une communauté pour ce produit.");
   }
 
+  const community = await fetchCommunityById(input.companyId);
+  const offerCurrency = community?.primaryCurrency || input.currency || "XOF";
+
   const offerId = input.id && !input.id.startsWith("proj-temp-")
     ? input.id
     : "offer-" + Math.random().toString(36).substring(2, 9);
@@ -335,7 +363,7 @@ export async function upsertOfferToSupabase(input: {
     title: input.name.trim(),
     description: input.description?.trim() || "",
     price_amount: isFree ? 0 : input.priceAmount,
-    currency: input.currency || "XOF",
+    currency: offerCurrency,
     pricing_type: isFree ? "free" : "paid",
     billing_cycle: input.billingCycle || "monthly",
     status: input.status || "active",

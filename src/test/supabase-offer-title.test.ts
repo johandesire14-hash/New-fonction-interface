@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getUserMock, fromMock, upsertMock } = vi.hoisted(() => ({
+const { getUserMock, fromMock, upsertMock, fetchCommunityByIdMock } = vi.hoisted(() => ({
   getUserMock: vi.fn(),
   fromMock: vi.fn(),
   upsertMock: vi.fn(),
+  fetchCommunityByIdMock: vi.fn(),
 }));
 
 vi.mock("@/mansa/services/supabase", () => ({
@@ -11,6 +12,10 @@ vi.mock("@/mansa/services/supabase", () => ({
     auth: { getUser: getUserMock },
     from: fromMock,
   },
+}));
+
+vi.mock("@/mansa/services/supabaseCommunityService", () => ({
+  fetchCommunityById: fetchCommunityByIdMock,
 }));
 
 import {
@@ -23,6 +28,7 @@ describe("Supabase offer title consistency", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUserMock.mockResolvedValue({ data: { user: { id: "creator-1" } } });
+    fetchCommunityByIdMock.mockResolvedValue({ primaryCurrency: "XOF" });
     fromMock.mockReturnValue({ upsert: upsertMock });
     upsertMock.mockResolvedValue({ error: null });
   });

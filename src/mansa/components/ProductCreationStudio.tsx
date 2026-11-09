@@ -168,6 +168,11 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
     initialData?.companyId || initialCompanyId || companies[0]?.id || "",
   );
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId);
+  const selectedCompanyCurrencyCode = selectedCompany?.primaryCurrency as CurrencyCode | undefined;
+  const selectedCompanyCurrency =
+    selectedCompanyCurrencyCode && SUPPORTED_CURRENCIES[selectedCompanyCurrencyCode]
+      ? selectedCompanyCurrencyCode
+      : undefined;
   const effectiveCompanyName =
     selectedCompany?.name ||
     companyName ||
@@ -182,9 +187,9 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
     }
   }, [selectedCompanyId, initialCompanyId, companies]);
 
-  // Synchronized currency: inherited from active dashboard selection, initialData or persisted stored currency
+  // Community product prices use the community's primary currency, not the creator's account currency.
   const initialCurrency: CurrencyCode =
-    initialData?.currency || activeCurrency || getStoredCurrency();
+    selectedCompanyCurrency || initialData?.currency || activeCurrency || getStoredCurrency();
   const [currentCurrency, setCurrentCurrency] = useState<CurrencyCode>(initialCurrency);
 
   // 4 Core Product Sections
@@ -291,6 +296,7 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
 
   // Currency switcher with automatic conversion of configured prices and plans
   const handleCurrencyChange = (newCurrency: CurrencyCode) => {
+    if (selectedCompanyCurrency) return;
     if (newCurrency === currentCurrency) return;
     const oldCurrency = currentCurrency;
 
@@ -860,12 +866,21 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-zinc-300">
             <span className="hidden sm:inline text-zinc-400 font-mono text-[11px]">Devise :</span>
-            <CurrencySelector
-              currentCurrency={currentCurrency}
-              onSelectCurrency={(newCurr) => handleCurrencyChange(newCurr)}
-              variant="pill"
-              lang="fr"
-            />
+            {selectedCompanyCurrency ? (
+              <span
+                className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-white"
+                title={`Devise principale de ${selectedCompany?.name || "la communauté"}`}
+              >
+                {SUPPORTED_CURRENCIES[selectedCompanyCurrency].symbol} ({selectedCompanyCurrency})
+              </span>
+            ) : (
+              <CurrencySelector
+                currentCurrency={currentCurrency}
+                onSelectCurrency={(newCurr) => handleCurrencyChange(newCurr)}
+                variant="pill"
+                lang="fr"
+              />
+            )}
           </div>
 
           <button

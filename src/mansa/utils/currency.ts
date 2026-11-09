@@ -207,6 +207,11 @@ export const SUPPORTED_CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
   },
 };
 
+export const getCurrencySymbol = (currencyCode?: string | null): string => {
+  if (!currencyCode) return SUPPORTED_CURRENCIES.XOF.symbol;
+  return SUPPORTED_CURRENCIES[currencyCode as CurrencyCode]?.symbol || currencyCode;
+};
+
 /**
  * Supported African and international countries mapped to their national currencies.
  * Allows users to find their currency immediately when typing their country name.

@@ -35,6 +35,7 @@ import {
 import { MobileMoneyPaymentForm } from "../payment/MobileMoneyPaymentForm";
 import { PhoneValidationResult } from "../../utils/phoneValidationRules";
 import { useModalDismiss } from "../../hooks/useModalDismiss";
+import { getCurrencySymbol } from "../../utils/currency";
 import {
   createRealTransaction,
   persistFreeMemberEntitlement,
@@ -499,7 +500,7 @@ export const OfferCheckoutModal: React.FC<OfferCheckoutModalProps> = ({
               : "monthly",
       }) as const,
   );
-  const currencySymbol = offer.currency === "EUR" ? "€" : offer.currency;
+  const currencySymbol = getCurrencySymbol(offer.currency);
 
   return (
     <CheckoutPreviewModal

@@ -90,6 +90,7 @@ import {
   TEMPORARY_FREE_ACCESS_ENABLED,
 } from "../../utils/temporaryFreeAccess";
 import { downloadDigitalAsset, saveDigitalAsset } from "../../utils/digitalAssetStorage";
+import { getCurrencySymbol } from "../../utils/currency";
 import {
   getPostsForCompany,
   createCompanyPost,
@@ -3857,7 +3858,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                           <span className="font-mono text-3xl font-black text-white">
                             {offer.pricingType === "free"
                               ? "Gratuit"
-                              : `${selectedPlan.price} ${offer.currency === "EUR" ? "€" : offer.currency}`}
+                              : `${selectedPlan.price} ${getCurrencySymbol(offer.currency)}`}
                           </span>
                           {offer.pricingType === "paid" && (
                             <span className="font-mono text-xs text-zinc-400">
@@ -3886,7 +3887,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                               >
                                 <span>{plan.name}</span>
                                 <span className="font-mono font-bold text-white">
-                                  {plan.price} {offer.currency === "EUR" ? "€" : offer.currency}
+                                  {plan.price} {getCurrencySymbol(offer.currency)}
                                 </span>
                               </button>
                             ))}
