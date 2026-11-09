@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { requireActiveSupabaseSession, supabase } from "./supabase";
 import type {
   BusinessProject,
   CreatorPlatformOffer,
@@ -527,6 +527,7 @@ export async function deleteOfferFromSupabase(offerId: string): Promise<void> {
  */
 export async function claimFreeOfferRpc(offerId: string): Promise<void> {
   if (!offerId) throw new Error("ID d'offre manquant.");
+  await requireActiveSupabaseSession();
   const { error } = await supabase.rpc("claim_free_offer", {
     p_offer_id: offerId,
   });

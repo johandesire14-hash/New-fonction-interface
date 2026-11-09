@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { requireActiveSupabaseSession, supabase } from "./supabase";
 import type { Company } from "../types";
 
 export interface CommunityRow {
@@ -151,6 +151,7 @@ export async function deleteCommunityFromSupabase(communityId: string): Promise<
  */
 export async function joinCommunityRpc(communityId: string): Promise<void> {
   if (!communityId) throw new Error("ID de communauté manquant.");
+  await requireActiveSupabaseSession();
   const { error } = await supabase.rpc("join_community", {
     p_community_id: communityId,
   });

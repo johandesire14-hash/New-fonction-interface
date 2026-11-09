@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { supabase } from "../services/supabase";
+import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
+import {
+  isActiveSupabaseSession,
+  SESSION_EXPIRED_MESSAGE,
+  supabase,
+} from "../services/supabase";
 import type { FirestoreUserProfile } from "../services/dbService";
 import { safeStorage } from "../utils/storage";
 
@@ -31,6 +35,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_REQUEST_TIMEOUT_MS = 15_000;
 const AUTH_TIMEOUT_MESSAGE =
   "L'authentification Supabase prend trop de temps. Vérifiez votre connexion, puis réessayez.";
+
+const applySessionUser = (
+  session: Session | null,
+  setUser: React.Dispatch<React.SetStateAction<AppUser | null>>,
+  setProfile: React.Dispatch<React.SetStateAction<FirestoreUserProfile | null>>,
+): boolean => {
+  if (!isActiveSupabaseSession(session)) {
+    setUser(null);
+    setProfile(null);
+    return false;
+  }
+
+  const appUser = mapSupabaseUserToAppUser(session.user);
+  setUser(appUser);
+  setProfile(buildUserProfile(appUser));
+  return true;
+};
 
 const withAuthTimeout = <T,>(request: Promise<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {
@@ -105,6 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const syncUserFromSession = (session: Session | null): boolean =>
+    applySessionUser(session, setUser, setProfile);
+
   useEffect(() => {
     cleanupLegacyLocalStorage();
     let isMounted = true;
@@ -115,17 +139,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         if (sessionError) {
           console.error("Supabase getSession error:", sessionError);
+          syncUserFromSession(null);
           setError("Impossible de vérifier votre session Supabase. Vérifiez votre connexion et réessayez.");
+        } else if (session && !isActiveSupabaseSession(session)) {
+          syncUserFromSession(null);
+          setError(SESSION_EXPIRED_MESSAGE);
+          void supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
         } else {
+          syncUserFromSession(session);
           setError(null);
-        }
-        if (session?.user) {
-          const appUser = mapSupabaseUserToAppUser(session.user);
-          setUser(appUser);
-          setProfile(buildUserProfile(appUser));
-        } else {
-          setUser(null);
-          setProfile(null);
         }
       })
       .catch((err) => {
@@ -145,16 +167,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen to auth changes
     let authListener: { subscription?: { unsubscribe: () => void } } | null = null;
     try {
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
         if (!isMounted) return;
-        if (session?.user) {
-          const appUser = mapSupabaseUserToAppUser(session.user);
-          setUser(appUser);
-          setProfile(buildUserProfile(appUser));
-          setError(null);
+        if (session) {
+          const sessionIsActive = syncUserFromSession(session);
+          setError(sessionIsActive ? null : SESSION_EXPIRED_MESSAGE);
         } else {
-          setUser(null);
-          setProfile(null);
+          syncUserFromSession(null);
+          if (event === "SIGNED_OUT") setError(null);
         }
         setLoading(false);
       });
@@ -179,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setLoading(true);
-      const { data, error: signInError } = await withAuthTimeout(
+      const { error: signInError } = await withAuthTimeout(
         supabase.auth.signInWithPassword({
           email: email.trim(),
           password: pass,
@@ -190,11 +210,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw signInError;
       }
 
-      if (data.user) {
-        const appUser = mapSupabaseUserToAppUser(data.user);
-        setUser(appUser);
-        setProfile(buildUserProfile(appUser));
+      const { data: { session }, error: sessionError } = await withAuthTimeout(
+        supabase.auth.getSession(),
+      );
+      if (sessionError) throw sessionError;
+      if (!isActiveSupabaseSession(session)) {
+        syncUserFromSession(null);
+        throw new Error(
+          session ? SESSION_EXPIRED_MESSAGE : "Supabase n'a établi aucune session active. Vérifiez votre compte et reconnectez-vous.",
+        );
       }
+      syncUserFromSession(session);
+      setError(null);
     } catch (err: any) {
       console.error("Erreur de connexion Supabase:", err);
       let msg = err.message || "Identifiants invalides. Vérifiez votre email et mot de passe.";
@@ -233,11 +260,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw signUpError;
       }
 
-      if (data.user) {
-        const appUser = mapSupabaseUserToAppUser(data.user);
-        setUser(appUser);
-        setProfile(buildUserProfile(appUser));
+      const { data: { session }, error: sessionError } = await withAuthTimeout(
+        supabase.auth.getSession(),
+      );
+      if (sessionError) throw sessionError;
+      if (!isActiveSupabaseSession(session)) {
+        syncUserFromSession(null);
+        throw new Error(
+          data.user
+            ? "Compte créé. Confirmez votre adresse email, puis connectez-vous."
+            : "Aucune session Supabase active n'a été créée. Reconnectez-vous.",
+        );
       }
+      syncUserFromSession(session);
+      setError(null);
     } catch (err: any) {
       console.error("Erreur d'inscription Supabase:", err);
       let msg = err.message || "Erreur lors de la création du compte.";
@@ -272,12 +308,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
+      if (signOutError) throw signOutError;
+      const { data: { session }, error: sessionError } = await withAuthTimeout(
+        supabase.auth.getSession(),
+      );
+      if (sessionError) throw sessionError;
+      syncUserFromSession(session);
     } catch (err) {
       console.error("Erreur de déconnexion Supabase:", err);
-    } finally {
-      setUser(null);
-      setProfile(null);
     }
   };
 

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowLeft, Mail, Lock, User, AlertCircle, ArrowRight } from "lucide-react";
 import { AfhubLogo } from "./AfhubLogo";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +10,7 @@ interface LoginPageProps {
   onBackToLanding?: () => void;
   lang: "fr" | "en";
   initialMode?: "login" | "signup";
+  initialError?: string;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
@@ -17,6 +18,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onBackToLanding,
   lang,
   initialMode = "signup",
+  initialError,
 }) => {
   const { signInWithEmail, signUpWithEmail, resetPassword, error, clearError } = useAuth();
 
@@ -25,8 +27,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(initialError || null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialError) setLocalError(initialError);
+  }, [initialError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +55,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       onLoginSuccess();
     } catch (err: any) {
       console.error("Auth error:", err);
+      const authMessage = typeof err?.message === "string" ? err.message.trim() : "";
       setLocalError(
-        getUserFacingErrorMessage(err, "Connexion impossible. Vérifiez vos informations et réessayez."),
+        authMessage ||
+          getUserFacingErrorMessage(err, "Connexion impossible. Vérifiez vos informations et réessayez."),
       );
     } finally {
       setIsSubmitting(false);
@@ -140,7 +148,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         <div className="rounded-2xl border border-white/10 bg-[#15181b] p-6 sm:p-7 shadow-2xl space-y-4">
           {/* Error notice */}
           {(localError || error) && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs leading-relaxed">
+            <div role="alert" className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs leading-relaxed">
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <span>{localError || error}</span>
             </div>

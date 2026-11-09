@@ -23,7 +23,7 @@ const ProductCreationStudio = lazy(() =>
 );
 
 export default function App({ openStudioOnMount = false }: { openStudioOnMount?: boolean }) {
-  const { user: authUser, profile, logout } = useAuth();
+  const { user: authUser, logout } = useAuth();
   const [lang] = useState<"fr" | "en">("fr");
   const initialAppCurrency = getStoredCurrency();
   const [userLocationInfo, setUserLocationInfo] = useState({
@@ -58,15 +58,20 @@ export default function App({ openStudioOnMount = false }: { openStudioOnMount?:
     return () => window.removeEventListener("mansa_currency_changed", handleStorageCurrency);
   }, []);
 
-  const currentUser =
-    authUser && profile
-      ? {
-          uid: profile.uid,
-          name: profile.displayName || authUser.displayName || "Créateur Mansa",
-          email: profile.email || authUser.email || "",
-          avatarInitials: profile.avatarInitials || "MA",
-        }
-      : null;
+  const displayName = authUser?.displayName || "Créateur Mansa";
+  const currentUser = authUser
+    ? {
+        uid: authUser.uid,
+        name: displayName,
+        email: authUser.email || "",
+        avatarInitials: displayName
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+      }
+    : null;
 
   const handleOpenStudio = () => {
     setIsStudioOpen(true);
@@ -82,9 +87,12 @@ export default function App({ openStudioOnMount = false }: { openStudioOnMount?:
   };
 
   const handleSaveProductFromStudio = async (product: CreatedProductData) => {
-    const creatorId = profile?.uid || authUser?.uid || "user-temp";
-    const creatorEmail = profile?.email || authUser?.email || "createur@mansa.af";
-    const creatorName = profile?.displayName || authUser?.displayName || "Créateur Mansa";
+    const creatorId = authUser?.uid;
+    if (!creatorId) {
+      throw new Error("Votre session Supabase est absente ou expirée. Reconnectez-vous.");
+    }
+    const creatorEmail = authUser.email || "";
+    const creatorName = authUser.displayName || "Créateur Mansa";
     await saveProductToFirestore(creatorId, creatorEmail, creatorName, {
       id: product.id,
       name: product.name,

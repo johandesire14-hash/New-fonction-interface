@@ -15,7 +15,7 @@ function AppRoute() {
 
   useEffect(() => {
     if (!loading && !user)
-      void navigate({ to: "/login", search: { mode: "login" }, replace: true });
+      void navigate({ to: "/login", search: { mode: "login", reason: "session" }, replace: true });
   }, [loading, user, navigate]);
 
   if (loading || !user) return <AppLoadingScreen />;

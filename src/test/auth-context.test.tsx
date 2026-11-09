@@ -18,6 +18,13 @@ vi.mock("../mansa/services/supabase", () => {
         resetPasswordForEmail: vi.fn().mockResolvedValue({ error: null }),
       },
     },
+    isActiveSupabaseSession: (session: any) =>
+      Boolean(
+        session?.user?.id &&
+          session.access_token &&
+          (!session.expires_at || session.expires_at > Math.floor(Date.now() / 1000)),
+      ),
+    SESSION_EXPIRED_MESSAGE: "Votre session Supabase a expiré. Reconnectez-vous pour continuer.",
   };
 });
 
@@ -36,6 +43,16 @@ function TestConsumer() {
   );
 }
 
+const activeSession = {
+  user: {
+    id: "12345678-1234-1234-1234-123456789abc",
+    email: "test@example.com",
+    user_metadata: { full_name: "Test User" },
+  },
+  access_token: "valid-test-token",
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+};
+
 describe("AuthContext with Supabase", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,16 +68,12 @@ describe("AuthContext with Supabase", () => {
     expect(await screen.findByTestId("user-status")).toHaveTextContent("Déconnecté");
   });
 
-  it("handles successful login with email/password", async () => {
+  it("sets the user only from a valid session returned by getSession", async () => {
+    vi.mocked(supabase.auth.getSession)
+      .mockResolvedValueOnce({ data: { session: null }, error: null } as any)
+      .mockResolvedValueOnce({ data: { session: activeSession }, error: null } as any);
     vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
-      data: {
-        user: {
-          id: "12345678-1234-1234-1234-123456789abc",
-          email: "test@example.com",
-          user_metadata: { full_name: "Test User" },
-        } as any,
-        session: {} as any,
-      },
+      data: { user: activeSession.user as any, session: activeSession as any },
       error: null,
     });
 
@@ -79,7 +92,54 @@ describe("AuthContext with Supabase", () => {
       email: "test@example.com",
       password: "password123",
     });
+    expect(supabase.auth.getSession).toHaveBeenCalledTimes(2);
     expect(await screen.findByTestId("user-status")).toHaveTextContent("Connecté: test@example.com");
+  });
+
+  it("does not trust a sign-in response user when getSession has no active session", async () => {
+    vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
+      data: {
+        user: { id: "fake-user-id", email: "test@example.com" } as any,
+        session: {} as any,
+      },
+      error: null,
+    });
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await screen.findByText("Connexion");
+    await act(async () => {
+      screen.getByText("Connexion").click();
+    });
+
+    expect(screen.getByTestId("user-status")).toHaveTextContent("Déconnecté");
+    expect(screen.getByTestId("auth-error")).toHaveTextContent("aucune session active");
+  });
+
+  it("shows the specific Supabase email-confirmation error", async () => {
+    vi.mocked(supabase.auth.signInWithPassword).mockResolvedValueOnce({
+      data: { user: null, session: null },
+      error: { message: "Email not confirmed" } as any,
+    });
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    await screen.findByText("Connexion");
+    await act(async () => {
+      screen.getByText("Connexion").click();
+    });
+
+    expect(screen.getByTestId("auth-error")).toHaveTextContent(
+      "Veuillez confirmer votre adresse email avant de vous connecter.",
+    );
   });
 
   it("handles logout", async () => {
@@ -94,7 +154,7 @@ describe("AuthContext with Supabase", () => {
       logoutButton.click();
     });
 
-    expect(supabase.auth.signOut).toHaveBeenCalled();
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
   it("shows a clear error instead of an endless spinner when session initialization times out", async () => {
@@ -141,5 +201,27 @@ describe("AuthContext with Supabase", () => {
     expect(screen.getByTestId("user-status")).toHaveTextContent("Déconnecté");
     expect(screen.getByTestId("auth-error")).toHaveTextContent("L'authentification Supabase prend trop de temps");
     vi.useRealTimers();
+  });
+
+  it("rejects an expired session returned by getSession", async () => {
+    vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
+      data: {
+        session: {
+          ...activeSession,
+          expires_at: 1,
+        } as any,
+      },
+      error: null,
+    } as any);
+
+    render(
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>,
+    );
+
+    expect(await screen.findByTestId("user-status")).toHaveTextContent("Déconnecté");
+    expect(await screen.findByTestId("auth-error")).toHaveTextContent("session Supabase a expiré");
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });

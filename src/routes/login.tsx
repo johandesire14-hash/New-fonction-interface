@@ -6,6 +6,7 @@ import { useAuth } from "@/mansa/context/AuthContext";
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search["mode"] === "signup" ? ("signup" as const) : ("login" as const),
+    reason: search["reason"] === "session" ? ("session" as const) : undefined,
   }),
   component: LoginRoute,
 });
@@ -50,7 +51,7 @@ function AuthLoader({
 function LoginRoute() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { mode } = Route.useSearch();
+  const { mode, reason } = Route.useSearch();
   const [redirectError, setRedirectError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,11 +85,20 @@ function LoginRoute() {
   };
 
   if (loading) return <AuthLoader />;
-  if (user) return <AuthLoader error={redirectError || undefined} onRetry={retryNavigation} />;
+  if (user)
+    return (
+      <AuthLoader
+        {...(redirectError ? { error: redirectError } : {})}
+        onRetry={retryNavigation}
+      />
+    );
   return (
     <LoginPage
-      key={mode}
+      key={`${mode}:${reason || ""}`}
       initialMode={mode}
+      {...(reason === "session"
+        ? { initialError: "Votre session Supabase est absente ou a expiré. Reconnectez-vous pour continuer." }
+        : {})}
       lang="fr"
       onLoginSuccess={retryNavigation}
       onBackToLanding={() => void navigate({ to: "/" })}
