@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsCompany(companyId) {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/companies/$(companyId)).data.get('ownerUid', '') == request.auth.uid;
+    }
+
+    function isDiscoverableCompany(companyId) {
+      return firestore.get(/databases/(default)/documents/discoverableCompanies/$(companyId)).data.get('discoverable', false) == true;
+    }
+
+    match /company-branding/{companyId}/{fileName} {
+      allow read: if isDiscoverableCompany(companyId);
+      allow create, update: if ownsCompany(companyId)
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if ownsCompany(companyId);
+    }
+
+    match /company-post-media/{companyId}/{allPaths=**} {
+      allow read: if signedIn() || isDiscoverableCompany(companyId);
+      allow create, update: if ownsCompany(companyId)
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*');
+      allow delete: if ownsCompany(companyId);
+    }
+
+    match /project-assets/{ownerUid}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == ownerUid
+        && request.resource.size < 250 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf|application/zip|audio/.*|video/.*|text/.*');
+    }
+
+    match /product-assets/{productId}/{assetId} {
+      function isProductOwner() {
+        return signedIn()
+          && firestore.get(/databases/(default)/documents/products/$(productId)).data.get('creatorId', '') == request.auth.uid;
+      }
+      function hasActiveEntitlement() {
+        return signedIn()
+          && firestore.exists(/databases/(default)/documents/offerEntitlements/$(productId)/members/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/offerEntitlements/$(productId)/members/$(request.auth.uid)).data.get('status', '') == 'active';
+      }
+      allow read: if isProductOwner() || hasActiveEntitlement();
+      allow create, update: if isProductOwner() && request.resource.size < 250 * 1024 * 1024;
+      allow delete: if isProductOwner();
+    }
+  }
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Remplacer __SITE_URL__ par SITE_URL avant publication. -->
+  <url><loc>__SITE_URL__/</loc></url>
+  <url><loc>__SITE_URL__/#marketplace</loc></url>
+  <url><loc>__SITE_URL__/mentions-legales</loc></url>
+  <url><loc>__SITE_URL__/privacy</loc></url>
+  <url><loc>__SITE_URL__/cgu</loc></url>
+</urlset>

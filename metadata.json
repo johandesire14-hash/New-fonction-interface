@@ -1,0 +1,6 @@
+{
+  "name": "Mansa Web",
+  "description": "Plateforme communautaire et e-commerce pour créateurs avec intégration Supabase",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

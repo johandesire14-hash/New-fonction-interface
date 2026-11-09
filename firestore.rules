@@ -1,0 +1,862 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Les rôles sont des custom claims attribuées exclusivement par un serveur
+    // de confiance via Firebase Admin SDK. Une valeur stockée dans /users ne fait
+    // jamais autorité pour autoriser l'accès.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasClaim(claimName) {
+      return signedIn() && request.auth.token.get(claimName, false) == true;
+    }
+
+    function isAdmin() {
+      return hasClaim('admin');
+    }
+
+    function isSupportStaff() {
+      return isAdmin() || hasClaim('supportAgent') || hasClaim('moderator');
+    }
+
+    function isReportModerator() {
+      return isAdmin() || hasClaim('moderator');
+    }
+
+    function isKycReviewer() {
+      return isAdmin() || hasClaim('kycReviewer');
+    }
+
+    function isFinanceStaff() {
+      return isAdmin() || hasClaim('financeReviewer');
+    }
+
+
+    function ownsCompany(companyId) {
+      return signedIn()
+        && companyId is string
+        && companyId.size() > 0
+        && exists(/databases/$(database)/documents/companies/$(companyId))
+        && get(/databases/$(database)/documents/companies/$(companyId)).data.get('ownerUid', '') == request.auth.uid;
+    }
+
+    function productHasOwnedCompany() {
+      return ownsCompany(request.resource.data.get('companyId', ''))
+        && request.resource.data.get('companyName', '')
+          == get(/databases/$(database)/documents/companies/$(request.resource.data.companyId)).data.get('name', '');
+    }
+
+    function hasActiveOfferEntitlement(productId) {
+      let entitlementPath = /databases/$(database)/documents/offerEntitlements/$(productId)/members/$(request.auth.uid);
+      return signedIn()
+        && exists(entitlementPath)
+        && get(entitlementPath).data.get('status', '') == 'active'
+        && get(entitlementPath).data.get('memberUid', '') == request.auth.uid
+        && get(entitlementPath).data.get('productId', '') == productId;
+    }
+
+    function canReadPrivateProductContent(productId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/products/$(productId))
+        && ((get(/databases/$(database)/documents/products/$(productId)).data.get('creatorId', '') == request.auth.uid
+            && ownsCompany(get(/databases/$(database)/documents/products/$(productId)).data.get('companyId', '')))
+          || hasActiveOfferEntitlement(productId));
+    }
+
+    function hasVerifiedEntitlement(productId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/memberEntitlements/$(request.auth.uid + '_' + productId))
+        && get(/databases/$(database)/documents/memberEntitlements/$(request.auth.uid + '_' + productId)).data.get('memberUid', '') == request.auth.uid
+        && get(/databases/$(database)/documents/memberEntitlements/$(request.auth.uid + '_' + productId)).data.get('status', '') in ['paid', 'free']
+        && get(/databases/$(database)/documents/memberEntitlements/$(request.auth.uid + '_' + productId)).data.get('productId', '') == productId;
+    }
+
+    function isActiveFreeProduct(productId, companyId) {
+      let productPath = /databases/$(database)/documents/products/$(productId);
+      return productId is string
+        && productId.size() > 0
+        && companyId is string
+        && companyId.size() > 0
+        && exists(productPath)
+        && get(productPath).data.get('status', '') == 'active'
+        && get(productPath).data.get('pricingAmount', -1) == 0
+        && get(productPath).data.get('companyId', '') == companyId;
+    }
+
+    function validStatusUpdate(allowedStatuses) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'assignedToUid',
+          'updatedAt',
+          'resolutionSummary'
+        ])
+        && request.resource.data.get('status', resource.data.get('status', '')) in allowedStatuses
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['assignedToUid'])
+          || request.resource.data.assignedToUid == null
+          || request.resource.data.assignedToUid is string)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['resolutionSummary'])
+          || (request.resource.data.resolutionSummary is string
+            && request.resource.data.resolutionSummary.size() <= 4000));
+    }
+
+    function validInternalNote() {
+      return signedIn()
+        && request.resource.data.keys().hasOnly(['authorId', 'body', 'createdAt'])
+        && request.resource.data.keys().hasAll(['authorId', 'body', 'createdAt'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 5000
+        // Les notes doivent être créées avec serverTimestamp(), pas une date client.
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt == request.time;
+    }
+
+    // Profils privés. Les rôles et décisions de vérification ne sont jamais
+    // modifiables par le propriétaire du profil.
+    match /users/{uid} {
+      function allowedProfileKeys() {
+        return [
+          'uid', 'email', 'displayName', 'avatarInitials', 'photoURL',
+          'country', 'currency', 'handle', 'bio', 'birthDate',
+          'showTotalEarned', 'showLocation', 'showOwnedBusinesses',
+          'showOwnedWhops', 'showJoinedWhops',
+          'storeName', 'storeTagline', 'supportEmail', 'storeCurrency',
+          'companyBanner', 'companyLogo', 'storeBanner', 'storeLogo',
+          'payoutMethod', 'momoNumber', 'momoName', 'bankName',
+          'bankIbanRib', 'bankAccountHolder', 'accountPaymentSettings',
+          'payoutVerificationStatus',
+          'kycStatus', 'kycDocumentType', 'kycDocumentNumber', 'kycNotes',
+          'kycSubmittedAt', 'createdAt', 'updatedAt'
+        ];
+      }
+
+      function ownerMayEditKyc() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        let kycFields = [
+          'kycStatus', 'kycDocumentType', 'kycDocumentNumber', 'kycNotes', 'kycSubmittedAt'
+        ];
+        return !changed.hasAny(kycFields)
+          || (request.resource.data.get('kycStatus', 'not_required') == 'pending'
+            && resource.data.get('kycStatus', 'not_required') != 'verified');
+      }
+
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(allowedProfileKeys());
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(allowedProfileKeys())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedProfileKeys())
+        && ownerMayEditKyc()
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['kycStatus'])
+          || request.resource.data.kycStatus == 'pending')
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['payoutVerificationStatus'])
+          || request.resource.data.payoutVerificationStatus == 'pending');
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Produits publics actifs; les brouillons ne sont accessibles qu'au créateur.
+    match /products/{productId} {
+      allow get: if resource == null
+        || resource.data.get('status', '') == 'active'
+        || (signedIn() && resource.data.get('creatorId', '') == request.auth.uid)
+        || isSupportStaff();
+      allow list: if resource.data.get('status', '') == 'active'
+        || (signedIn() && resource.data.get('creatorId', '') == request.auth.uid)
+        || isSupportStaff();
+      allow create: if signedIn()
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.keys().hasAll(['creatorId', 'companyId', 'companyName', 'name', 'status'])
+        && !request.resource.data.keys().hasAny(['digitalFiles', 'courseModules'])
+        && productHasOwnedCompany()
+        && request.resource.data.get('status', '') in ['active', 'draft', 'paused'];
+      allow update: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.keys().hasAll(['companyId', 'companyName'])
+        && !request.resource.data.keys().hasAny(['digitalFiles', 'courseModules'])
+        && productHasOwnedCompany()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'tagline', 'description', 'category', 'productType',
+          'pricingAmount', 'pricingModel', 'currency', 'targetAudience',
+          'status', 'features', 'techStack', 'estimatedMonthlyRevenue',
+          'affiliateCommissionRate', 'membersCount', 'conversionRate', 'apps',
+          'storeUrl', 'ctaText', 'coverImage', 'bannerUrl', 'companyId',
+          'companyName', 'digitalFiles', 'courseModules', 'updatedAt'
+        ])
+        && request.resource.data.get('status', '') in ['active', 'draft', 'paused'];
+      allow delete: if signedIn() && resource.data.get('creatorId', '') == request.auth.uid;
+    }
+
+    // Seul un service de paiement de confiance (Admin SDK) peut créer ou révoquer
+    // un entitlement. Les clients ne peuvent jamais se donner l’accès eux-mêmes.
+    match /offerEntitlements/{productId}/members/{memberUid} {
+      allow get: if signedIn()
+        && request.auth.uid == memberUid
+        && resource.data.get('status', '') == 'active'
+        && resource.data.get('memberUid', '') == request.auth.uid
+        && resource.data.get('productId', '') == productId;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // Le programme de cours et les ressources ne sont jamais inclus dans la fiche publique.
+    // Un entitlement payé ou l'adhésion à un produit réellement gratuit autorise sa lecture.
+    match /productPrivateContent/{productId} {
+      allow get: if canReadPrivateProductContent(productId) || hasVerifiedEntitlement(productId);
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'creatorId', 'companyId', 'digitalFiles', 'courseModules', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'creatorId', 'companyId', 'digitalFiles', 'courseModules', 'updatedAt'
+        ])
+        && request.resource.data.creatorId == request.auth.uid
+        && ownsCompany(request.resource.data.companyId)
+        && getAfter(/databases/$(database)/documents/products/$(productId)).data.get('creatorId', '') == request.auth.uid
+        && getAfter(/databases/$(database)/documents/products/$(productId)).data.get('companyId', '') == request.resource.data.companyId;
+      allow update: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          'creatorId', 'companyId', 'digitalFiles', 'courseModules', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'creatorId', 'companyId', 'digitalFiles', 'courseModules', 'updatedAt'
+        ])
+        && ownsCompany(request.resource.data.companyId)
+        && getAfter(/databases/$(database)/documents/products/$(productId)).data.get('creatorId', '') == request.auth.uid
+        && getAfter(/databases/$(database)/documents/products/$(productId)).data.get('companyId', '') == request.resource.data.companyId;
+      allow delete: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && ownsCompany(resource.data.get('companyId', ''));
+    }
+
+    // Demandes d'assistance: le client crée son propre dossier et ne peut jamais
+    // modifier son statut. L'équipe peut lire la file et gérer uniquement le suivi.
+    match /resolutionRequests/{ticketId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'reference', 'userId', 'type', 'subject', 'description',
+          'status', 'createdAt', 'paymentInformationSource'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'reference', 'userId', 'customerName', 'customerEmail', 'type',
+          'subject', 'description', 'status', 'createdAt', 'companyName',
+          'offerName', 'transactionId', 'providerReference', 'receiptId',
+          'amount', 'currency', 'country', 'paymentProvider',
+          'reportedPaymentStatus', 'paymentDate', 'paymentInformationSource'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.type in [
+          'payment_issue', 'access_issue', 'refund_request', 'creator_issue', 'other'
+        ]
+        && request.resource.data.status == 'open'
+        && request.resource.data.paymentInformationSource == 'user_reported'
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() <= 64
+        && request.resource.data.subject is string
+        && request.resource.data.subject.size() > 0
+        && request.resource.data.subject.size() <= 160
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 5000
+        && request.resource.data.createdAt is string
+        && request.resource.data.get('customerName', '') is string
+        && request.resource.data.get('customerName', '').size() <= 160
+        && request.resource.data.get('customerEmail', '') is string
+        && request.resource.data.get('customerEmail', '').size() <= 254
+        && request.resource.data.get('companyName', '') is string
+        && request.resource.data.get('companyName', '').size() <= 160
+        && request.resource.data.get('offerName', '') is string
+        && request.resource.data.get('offerName', '').size() <= 200
+        && request.resource.data.get('transactionId', '') is string
+        && request.resource.data.get('transactionId', '').size() <= 200
+        && request.resource.data.get('providerReference', '') is string
+        && request.resource.data.get('providerReference', '').size() <= 200
+        && request.resource.data.get('receiptId', '') is string
+        && request.resource.data.get('receiptId', '').size() <= 200
+        && request.resource.data.get('amount', '') is string
+        && request.resource.data.get('amount', '').size() <= 40
+        && request.resource.data.get('currency', '') is string
+        && request.resource.data.get('currency', '').size() <= 8
+        && request.resource.data.get('country', '') is string
+        && request.resource.data.get('country', '').size() <= 100
+        && request.resource.data.get('paymentProvider', '') is string
+        && request.resource.data.get('paymentProvider', '').size() <= 100
+        && request.resource.data.get('reportedPaymentStatus', '') in [
+          'unknown', 'paid', 'pending', 'failed', 'refunded'
+        ]
+        && request.resource.data.get('paymentDate', '') is string
+        && request.resource.data.get('paymentDate', '').size() <= 40;
+
+      allow get, list: if isSupportStaff()
+        || (signedIn() && resource.data.get('userId', '') == request.auth.uid);
+      allow update: if isSupportStaff()
+        && validStatusUpdate(['open', 'in_progress', 'waiting', 'resolved']);
+      allow delete: if false;
+
+      // Notes internes: inaccessibles au client, même au propriétaire du dossier.
+      match /internalNotes/{noteId} {
+        allow read: if isSupportStaff()
+          && exists(/databases/$(database)/documents/resolutionRequests/$(ticketId));
+        allow create: if isSupportStaff()
+          && exists(/databases/$(database)/documents/resolutionRequests/$(ticketId))
+          && validInternalNote();
+        allow update, delete: if false;
+      }
+    }
+
+    // Signalements d'entreprises. Les comptes connectés peuvent envoyer un
+    // signalement; seule l'équipe moderation/admin peut lire et traiter la file.
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'companyName', 'reason', 'details', 'website', 'createdAt', 'status'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'companyName', 'reason', 'details', 'website', 'createdAt', 'status', 'reporterUid'
+        ])
+        && (!('reporterUid' in request.resource.data)
+          || request.resource.data.reporterUid == request.auth.uid)
+        && request.resource.data.get('status', '') == 'pending'
+        && request.resource.data.get('reason', '') in [
+          'Contenu trompeur ou mensonger',
+          'Non-respect des engagements / Absence de livraison',
+          'Arnaque ou escroquerie financière',
+          'Violation des droits d\'auteur ou plagiat',
+          'Spam, harcèlement ou comportement toxique',
+          'Autre motif'
+        ]
+        && request.resource.data.get('companyName', '') is string
+        && request.resource.data.get('companyName', '').size() > 0
+        && request.resource.data.get('companyName', '').size() <= 160
+        && request.resource.data.get('details', '') is string
+        && request.resource.data.get('details', '').size() <= 4000
+        && request.resource.data.get('website', '') == ''
+        && request.resource.data.get('createdAt', '') is string;
+
+      allow get, list: if isReportModerator();
+      allow update: if isReportModerator()
+        && validStatusUpdate(['pending', 'in_review', 'waiting', 'resolved', 'rejected']);
+      allow delete: if false;
+
+      match /internalNotes/{noteId} {
+        allow read: if isReportModerator()
+          && exists(/databases/$(database)/documents/reports/$(reportId));
+        allow create: if isReportModerator()
+          && exists(/databases/$(database)/documents/reports/$(reportId))
+          && validInternalNote();
+        allow update, delete: if false;
+      }
+    }
+
+    // Vérification d'identité: l'utilisateur dépose et consulte sa demande;
+    // seul un vérificateur peut examiner ou changer la décision.
+    match /kycSubmissions/{uid} {
+      allow get: if (signedIn() && request.auth.uid == uid) || isKycReviewer();
+      allow list: if isKycReviewer();
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'userId', 'status', 'documentType', 'documentNumber', 'notes', 'submittedAt'
+        ])
+        && request.resource.data.get('userId', '') == uid
+        && request.resource.data.get('status', '') == 'pending'
+        && request.resource.data.get('documentType', '') in ['cni', 'passport', 'business_reg']
+        && request.resource.data.get('documentNumber', '') is string
+        && request.resource.data.documentNumber.size() > 0
+        && request.resource.data.documentNumber.size() <= 120
+        && request.resource.data.get('notes', '') is string
+        && request.resource.data.get('notes', '').size() <= 2000
+        && request.resource.data.get('submittedAt', '') is string;
+      allow update: if (signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.get('userId', '') == uid
+          && request.resource.data.get('status', '') == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'documentType', 'documentNumber', 'notes', 'submittedAt'
+          ]))
+        || (isKycReviewer()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'reviewerId', 'reviewedAt', 'reviewerNotes'
+          ])
+          && request.resource.data.get('status', '') in ['pending', 'verified', 'rejected']
+          && request.resource.data.get('reviewerId', '') == request.auth.uid);
+      allow delete: if false;
+    }
+
+    // Journaux clients minimaux requis par le site existant. Ces entrées ne sont
+    // pas une preuve d'audit de confiance: les décisions de modération/finance
+    // doivent être journalisées par une fonction serveur, jamais par le navigateur.
+    match /auditLogs/{logId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['actorId', 'action', 'targetId', 'createdAt'])
+        && request.resource.data.keys().hasAll(['actorId', 'action', 'targetId', 'createdAt'])
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.targetId is string
+        && request.resource.data.createdAt is string
+        && ((request.resource.data.action == 'kyc_submitted'
+            && request.resource.data.targetId == request.auth.uid
+            && exists(/databases/$(database)/documents/kycSubmissions/$(request.auth.uid)))
+          || (request.resource.data.action == 'resolution_created'
+            && exists(/databases/$(database)/documents/resolutionRequests/$(request.resource.data.targetId))
+            && get(/databases/$(database)/documents/resolutionRequests/$(request.resource.data.targetId)).data.userId == request.auth.uid));
+      allow get, list: if isAdmin()
+        || (isSupportStaff() && resource.data.get('action', '') == 'resolution_created')
+        || (isKycReviewer() && resource.data.get('action', '') == 'kyc_submitted');
+      allow update, delete: if false;
+    }
+
+    // Données financières. Les propriétaires peuvent lire leurs vues, mais les
+    // écritures de transactions, grand livre, soldes et paiements doivent venir
+    // d'un backend de confiance. Les clients Firebase ne peuvent pas les forger.
+    match /transactions/{transactionId} {
+      allow get, list: if isSupportStaff()
+        || (signedIn()
+          && resource.data.get('creatorId', '') == request.auth.uid
+          && ((('companyId' in resource.data) && ownsCompany(resource.data.companyId))
+            || (resource.data.get('companyId', null) == null
+              && resource.data.get('type', '') in ['affiliate', 'other'])));
+      allow create, update, delete: if false;
+    }
+
+    match /ledger_entries/{entryId} {
+      allow get, list: if isFinanceStaff()
+        || (signedIn() && resource.data.get('creatorId', '') == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /payouts/{payoutId} {
+      allow get, list: if isFinanceStaff()
+        || (signedIn() && resource.data.get('creatorId', '') == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /creator_accounts/{creatorId} {
+      allow get: if isFinanceStaff()
+        || (signedIn() && request.auth.uid == creatorId);
+      allow list: if isFinanceStaff();
+      allow create, update, delete: if false;
+    }
+
+    match /treasury_accounts/{accountId} {
+      allow get, list: if isFinanceStaff();
+      allow create, update, delete: if false;
+    }
+
+    // Demandes historiques de retrait. Un créateur peut demander un retrait,
+    // mais seul le backend/finance peut faire évoluer son état de traitement.
+    match /withdrawals/{withdrawalId} {
+      allow get, list: if isFinanceStaff()
+        || (signedIn() && resource.data.get('creatorId', '') == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'id', 'creatorId', 'amount', 'currency', 'fee', 'netAmount',
+          'payoutMethodId', 'payoutMethodType', 'payoutMethodLabel',
+          'destinationDetails', 'accountHolder', 'status', 'requestedAt', 'referenceNumber'
+        ])
+        && request.resource.data.get('id', '') == withdrawalId
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('amount', 0) is number
+        && request.resource.data.amount > 0
+        && request.resource.data.get('status', '') == 'processing';
+      allow update: if isFinanceStaff()
+        && request.resource.data.get('creatorId', '') == resource.data.get('creatorId', '')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'processedAt', 'reviewerId', 'reviewerNotes', 'referenceNumber'
+        ]);
+      allow delete: if false;
+    }
+
+    // Profil complet privé d'entreprise. Le propriétaire est fixé à la création
+    // et ne peut jamais être changé par le client.
+    match /companies/{companyId} {
+      function validCompanyKeys() {
+        return request.resource.data.keys().hasOnly([
+          'id', 'ownerUid', 'name', 'description', 'acceptedPayments', 'primaryCurrency',
+          'logoInitials', 'colorGradient', 'supportEmail', 'supportAutoReplyEnabled',
+          'supportAutoReplyMessage', 'companyBanner', 'companyLogo', 'socialLinks',
+          'discoverable', 'createdAt', 'updatedAt'
+        ]);
+      }
+
+      allow get, list: if signedIn() && resource.data.get('ownerUid', '') == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.get('ownerUid', '') == request.auth.uid
+        && request.resource.data.get('id', '') == companyId
+        && request.resource.data.get('name', '') is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.get('discoverable', false) == true
+        && validCompanyKeys();
+      allow update: if signedIn()
+        && resource.data.get('ownerUid', '') == request.auth.uid
+        && request.resource.data.get('ownerUid', '') == request.auth.uid
+        && request.resource.data.get('id', '') == companyId
+        && request.resource.data.get('discoverable', false) == true
+        && validCompanyKeys();
+      allow delete: if signedIn() && resource.data.get('ownerUid', '') == request.auth.uid;
+    }
+
+    // Annuaire public séparé : aucune donnée privée de l'entreprise n'est exposée.
+    match /discoverableCompanies/{companyId} {
+      function validPublicCompanyKeys() {
+        return request.resource.data.keys().hasOnly([
+          'companyId', 'ownerUid', 'name', 'description', 'logoInitials',
+          'colorGradient', 'companyBanner', 'companyLogo', 'discoverable', 'createdAt', 'updatedAt'
+        ]);
+      }
+
+      function ownerHasPrivateCompany() {
+        return exists(/databases/$(database)/documents/companies/$(companyId))
+          && get(/databases/$(database)/documents/companies/$(companyId)).data.get('ownerUid', '') == request.auth.uid;
+      }
+
+      allow get, list: if resource.data.get('discoverable', false) == true;
+      allow create: if signedIn()
+        && request.resource.data.get('companyId', '') == companyId
+        && request.resource.data.get('ownerUid', '') == request.auth.uid
+        && request.resource.data.get('discoverable', false) == true
+        && ownerHasPrivateCompany()
+        && validPublicCompanyKeys();
+      allow update: if signedIn()
+        && resource.data.get('ownerUid', '') == request.auth.uid
+        && request.resource.data.get('ownerUid', '') == request.auth.uid
+        && request.resource.data.get('companyId', '') == companyId
+        && request.resource.data.get('discoverable', false) == true
+        && ownerHasPrivateCompany()
+        && validPublicCompanyKeys();
+      allow delete: if signedIn()
+        && resource.data.get('ownerUid', '') == request.auth.uid
+        && ownerHasPrivateCompany();
+    }
+
+    // CRM du créateur. Les requêtes client doivent inclure creatorId == UID.
+    match /customers/{customerId} {
+      allow get, list: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && (!('companyId' in resource.data) || ownsCompany(resource.data.companyId));
+      allow create: if signedIn()
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.keys().hasAll(['creatorId', 'companyId', 'name'])
+        && ownsCompany(request.resource.data.companyId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'creatorId', 'companyId', 'companyName', 'name', 'email', 'country', 'countryName',
+          'countryFlag', 'productName', 'productId', 'amountSpent', 'totalSpent',
+          'totalSpentFormatted', 'currency', 'status', 'joinedAt', 'joinedDate'
+        ]);
+      allow update: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('companyId', '') == resource.data.get('companyId', '')
+        && (!('companyId' in resource.data) || ownsCompany(resource.data.companyId))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'companyName', 'name', 'email', 'country', 'countryName', 'countryFlag', 'productName',
+          'productId', 'amountSpent', 'totalSpent', 'totalSpentFormatted',
+          'currency', 'status'
+        ]);
+      allow delete: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && (!('companyId' in resource.data) || ownsCompany(resource.data.companyId));
+    }
+
+    match /workforce/{memberId} {
+      allow get, list: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && ownsCompany(resource.data.get('companyId', ''));
+      allow create: if signedIn()
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.keys().hasAll(['id', 'creatorId', 'companyId', 'name', 'role', 'createdAt'])
+        && ownsCompany(request.resource.data.companyId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'creatorId', 'companyId', 'name', 'role', 'rate', 'avatar', 'status',
+          'tasksCompleted', 'rating', 'createdAt'
+        ]);
+      allow update: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && resource.data.get('companyId', '') == request.resource.data.get('companyId', '')
+        && ownsCompany(resource.data.get('companyId', ''))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'role', 'rate', 'avatar', 'status', 'tasksCompleted', 'rating'
+        ]);
+      allow delete: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && ownsCompany(resource.data.get('companyId', ''));
+    }
+
+    match /partners/{dealId} {
+      allow get, list: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && ownsCompany(resource.data.get('companyId', ''));
+      allow create: if signedIn()
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'id', 'creatorId', 'companyId', 'partnerName', 'type', 'description', 'createdAt'
+        ])
+        && ownsCompany(request.resource.data.companyId)
+        && request.resource.data.keys().hasOnly([
+          'id', 'creatorId', 'companyId', 'partnerName', 'partnerLogo', 'partnerHandle',
+          'type', 'typeLabel', 'description', 'contactEmail', 'status',
+          'value', 'reach', 'startDate', 'createdAt'
+        ]);
+      allow update: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && request.resource.data.get('creatorId', '') == request.auth.uid
+        && resource.data.get('companyId', '') == request.resource.data.get('companyId', '')
+        && ownsCompany(resource.data.get('companyId', ''))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'partnerName', 'partnerLogo', 'partnerHandle', 'type', 'typeLabel',
+          'description', 'contactEmail', 'status', 'value', 'reach', 'startDate'
+        ]);
+      allow delete: if signedIn()
+        && resource.data.get('creatorId', '') == request.auth.uid
+        && ownsCompany(resource.data.get('companyId', ''));
+    }
+
+    // Liens d'affiliation : les documents contenant l'identité de l'affilié ne
+    // sont lisibles que par celui-ci. Seul le document code public, strictement
+    // limité à un pointeur opaque + produit/taux, est lisible anonymement.
+    function validAffiliateRate(productId, affiliateUid, rate) {
+      let productPath = /databases/$(database)/documents/products/$(productId);
+      return productId is string
+        && productId.size() > 0
+        && rate is number
+        && rate > 0
+        && rate <= 100
+        && exists(productPath)
+        && get(productPath).data.get('status', '') == 'active'
+        && get(productPath).data.get('creatorId', '') is string
+        && get(productPath).data.get('creatorId', '') != affiliateUid
+        && get(productPath).data.get('affiliateCommissionRate', -1) == rate;
+    }
+
+    function validAffiliateLinkCodePair(linkId, linkData, codeId, codeData) {
+      let publicRefPath = /databases/$(database)/documents/affiliateLinkRefs/$(linkData.get('publicRef', ''));
+      return linkData.get('code', '') == codeId
+        && codeData.get('publicRef', '') == linkData.get('publicRef', '')
+        && codeData.get('productId', '') == linkData.get('productId', '')
+        && codeData.get('commissionRate', -1) == linkData.get('commissionRate', -2)
+        && existsAfter(publicRefPath)
+        && getAfter(publicRefPath).data.get('linkId', '') == linkId
+        && getAfter(publicRefPath).data.get('affiliateUid', '') == linkData.get('affiliateUid', '')
+        && getAfter(publicRefPath).data.get('productId', '') == linkData.get('productId', '');
+    }
+
+    function validAffiliatePublicCode(codeId, codeData) {
+      let publicRefPath = /databases/$(database)/documents/affiliateLinkRefs/$(codeData.get('publicRef', ''));
+      let referenceData = getAfter(publicRefPath).data;
+      let linkId = referenceData.get('linkId', '');
+      let linkPath = /databases/$(database)/documents/affiliateLinks/$(linkId);
+      let linkData = getAfter(linkPath).data;
+      return existsAfter(publicRefPath)
+        && linkId.matches('^[a-f0-9]{64}$')
+        && existsAfter(linkPath)
+        && referenceData.get('affiliateUid', '') == request.auth.uid
+        && referenceData.get('productId', '') == codeData.get('productId', '')
+        && linkData.get('affiliateUid', '') == request.auth.uid
+        && validAffiliateLinkCodePair(linkId, linkData, codeId, codeData);
+    }
+
+    function validAffiliatePrivateReference(publicRef, referenceData) {
+      let linkId = referenceData.get('linkId', '');
+      let linkPath = /databases/$(database)/documents/affiliateLinks/$(linkId);
+      let linkData = getAfter(linkPath).data;
+      let codePath = /databases/$(database)/documents/affiliateCodes/$(linkData.get('code', ''));
+      let codeData = getAfter(codePath).data;
+      return linkId.matches('^[a-f0-9]{64}$')
+        && existsAfter(linkPath)
+        && existsAfter(codePath)
+        && referenceData.get('affiliateUid', '') == request.auth.uid
+        && referenceData.get('productId', '') == linkData.get('productId', '')
+        && linkData.get('affiliateUid', '') == request.auth.uid
+        && linkData.get('publicRef', '') == publicRef
+        && codeData.get('publicRef', '') == publicRef
+        && codeData.get('productId', '') == referenceData.get('productId', '')
+        && codeData.get('commissionRate', -1) == linkData.get('commissionRate', -2)
+        && linkData.get('code', '').matches('^[A-Za-z0-9_-]{32}$');
+    }
+
+    match /affiliateLinks/{linkId} {
+      allow get: if signedIn()
+        && (resource == null || resource.data.get('affiliateUid', '') == request.auth.uid);
+      allow list: if signedIn() && resource.data.get('affiliateUid', '') == request.auth.uid;
+      allow create: if signedIn()
+        && linkId.matches('^[a-f0-9]{64}$')
+        && request.resource.data.keys().hasAll([
+          'affiliateUid', 'productId', 'productName', 'creatorUid', 'commissionRate',
+          'publicRef', 'code', 'acceptedAt', 'createdAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'affiliateUid', 'productId', 'productName', 'creatorUid', 'commissionRate',
+          'publicRef', 'code', 'acceptedAt', 'createdAt'
+        ])
+        && request.resource.data.affiliateUid == request.auth.uid
+        && request.resource.data.productName is string
+        && request.resource.data.creatorUid is string
+        && validAffiliateRate(
+          request.resource.data.productId,
+          request.auth.uid,
+          request.resource.data.commissionRate
+        )
+        && request.resource.data.creatorUid
+          == get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('creatorId', '')
+        && request.resource.data.code is string
+        && request.resource.data.code.matches('^[A-Za-z0-9_-]{32}$')
+        && request.resource.data.publicRef is string
+        && request.resource.data.publicRef.matches('^[A-Za-z0-9_-]{32}$')
+        && request.resource.data.acceptedAt is timestamp
+        && request.resource.data.acceptedAt == request.time
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/affiliateCodes/$(request.resource.data.code))
+        && validAffiliateLinkCodePair(
+          linkId,
+          request.resource.data,
+          request.resource.data.code,
+          getAfter(/databases/$(database)/documents/affiliateCodes/$(request.resource.data.code)).data
+        );
+      allow update: if signedIn()
+        && resource.data.get('affiliateUid', '') == request.auth.uid
+        && request.resource.data.get('affiliateUid', '') == resource.data.get('affiliateUid', '')
+        && request.resource.data.get('productId', '') == resource.data.get('productId', '')
+        && request.resource.data.get('creatorUid', '') == resource.data.get('creatorUid', '')
+        && request.resource.data.get('code', '') == resource.data.get('code', '')
+        && request.resource.data.get('productName', '') == resource.data.get('productName', '')
+        && request.resource.data.get('publicRef', '').matches('^[A-Za-z0-9_-]{32}$')
+        && (resource.data.get('publicRef', '') == ''
+          || request.resource.data.publicRef == resource.data.publicRef)
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commissionRate', 'acceptedAt', 'publicRef'])
+        && validAffiliateRate(
+          resource.data.get('productId', ''),
+          request.auth.uid,
+          request.resource.data.get('commissionRate', -1)
+        )
+        && request.resource.data.get('acceptedAt', null) is timestamp
+        && request.resource.data.acceptedAt == request.time
+        && existsAfter(/databases/$(database)/documents/affiliateCodes/$(resource.data.code))
+        && validAffiliateLinkCodePair(
+          linkId,
+          request.resource.data,
+          resource.data.code,
+          getAfter(/databases/$(database)/documents/affiliateCodes/$(resource.data.code)).data
+        );
+      allow delete: if false;
+    }
+
+    match /affiliateCodes/{codeId} {
+      // Public get returns only an opaque reference and public product/rate details.
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && codeId.matches('^[A-Za-z0-9_-]{32}$')
+        && request.resource.data.keys().hasAll(['publicRef', 'productId', 'commissionRate', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['publicRef', 'productId', 'commissionRate', 'createdAt'])
+        && request.resource.data.publicRef is string
+        && request.resource.data.publicRef.matches('^[A-Za-z0-9_-]{32}$')
+        && validAffiliateRate(request.resource.data.productId, request.auth.uid, request.resource.data.commissionRate)
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.createdAt == request.time
+        && existsAfter(/databases/$(database)/documents/affiliateLinkRefs/$(request.resource.data.publicRef))
+        && validAffiliatePublicCode(codeId, request.resource.data);
+      allow update: if signedIn()
+        && request.resource.data.keys().hasAll(['publicRef', 'productId', 'commissionRate', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['publicRef', 'productId', 'commissionRate', 'createdAt'])
+        && request.resource.data.get('publicRef', '').matches('^[A-Za-z0-9_-]{32}$')
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['publicRef', 'commissionRate', 'productId', 'linkId'])
+        && existsAfter(/databases/$(database)/documents/affiliateLinkRefs/$(request.resource.data.publicRef))
+        && request.resource.data.get('productId', '') == getAfter(/databases/$(database)/documents/affiliateLinkRefs/$(request.resource.data.publicRef)).data.get('productId', '')
+        && validAffiliateRate(
+          request.resource.data.productId,
+          request.auth.uid,
+          request.resource.data.get('commissionRate', -1)
+        )
+        && validAffiliatePublicCode(codeId, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /affiliateLinkRefs/{publicRef} {
+      allow get: if signedIn()
+        && (resource == null || resource.data.get('affiliateUid', '') == request.auth.uid);
+      allow list: if signedIn() && resource.data.get('affiliateUid', '') == request.auth.uid;
+      allow create: if signedIn()
+        && publicRef.matches('^[A-Za-z0-9_-]{32}$')
+        && request.resource.data.keys().hasAll(['linkId', 'affiliateUid', 'productId'])
+        && request.resource.data.keys().hasOnly(['linkId', 'affiliateUid', 'productId'])
+        && request.resource.data.get('affiliateUid', '') == request.auth.uid
+        && request.resource.data.get('linkId', '').matches('^[a-f0-9]{64}$')
+        && existsAfter(/databases/$(database)/documents/affiliateLinks/$(request.resource.data.linkId))
+        && validAffiliatePrivateReference(publicRef, request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /affiliateMemberships/{membershipId} {
+      allow get: if signedIn()
+        && (resource.data.get('affiliateUserId', '') == request.auth.uid
+          || resource.data.get('ownerId', '') == request.auth.uid);
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.get('affiliateUserId', '') == request.auth.uid
+        && request.resource.data.get('productId', '') != ''
+        && exists(/databases/$(database)/documents/products/$(request.resource.data.productId))
+        && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('status', '') == 'active'
+        && request.resource.data.get('ownerId', '')
+          == get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('creatorId', '')
+        && request.resource.data.get('commissionRate', -1)
+          == get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.get('affiliateCommissionRate', -2)
+        && request.resource.data.keys().hasOnly([
+          'affiliateUserId', 'affiliateCode', 'productId', 'ownerId',
+          'commissionRate', 'membershipId', 'joinedAt'
+        ]);
+      allow update, delete: if false;
+    }
+
+    match /memberEntitlements/{entitlementId} {
+      allow get: if signedIn() && resource.data.get('memberUid', '') == request.auth.uid;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.get('memberUid', '') == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'memberUid', 'productId', 'companyId', 'status', 'verifiedAt'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'memberUid', 'productId', 'companyId', 'invoiceId', 'status', 'verifiedAt'
+        ])
+        && request.resource.data.get('productId', '') is string
+        && request.resource.data.get('productId', '').size() > 0
+        && request.resource.data.get('companyId', '') is string
+        && request.resource.data.get('verifiedAt', '') is string
+        && (
+          (request.resource.data.get('status', '') == 'paid'
+            && request.resource.data.get('invoiceId', '') is string
+            && request.resource.data.get('invoiceId', '').size() > 0)
+          || (request.resource.data.get('status', '') == 'free'
+            && !request.resource.data.keys().hasAny(['invoiceId'])
+            && isActiveFreeProduct(
+              request.resource.data.productId,
+              request.resource.data.companyId
+            ))
+        );
+      allow update: if signedIn()
+        && resource.data.get('memberUid', '') == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verifiedAt']);
+      allow delete: if false;
+    }
+
+    // Refus par défaut. Ne pas ajouter de règle globale permissive: les règles
+    // Firestore qui se chevauchent s'additionnent (un seul allow vrai suffit).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

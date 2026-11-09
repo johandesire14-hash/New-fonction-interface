@@ -1,0 +1,3 @@
+- [x] Simplifier le menu et l’accueil avec une illustration de boutique.
+- [x] Alléger le pied de page sans changer les écrans vendeur.
+- [x] Vérifier l’affichage et les actions principales.
