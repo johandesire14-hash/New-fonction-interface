@@ -104,7 +104,12 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
-  const activeVideoSource = activeChapter?.videoUrl || activeChapter?.videoStorageKey || course?.videoStorageKey;
+  const safeActiveChapterIndex = chapters.length
+    ? Math.min(Math.max(activeChapterIndex, 0), chapters.length - 1)
+    : 0;
+  const activeChapter = chapters[safeActiveChapterIndex] || null;
+  const activeVideoSource =
+    activeChapter?.videoUrl || activeChapter?.videoStorageKey || course?.videoStorageKey;
   const youtubeEmbedUrl = getYoutubeEmbedUrl(activeChapter?.videoUrl || course?.youtubeUrl);
 
   useEffect(() => {
@@ -194,7 +199,7 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
           {activeChapter && (
             <article className="rounded-2xl border border-white/10 bg-[#11141b] p-5 sm:p-7">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-300">
-                Chapitre {activeChapterIndex + 1} sur {chapters.length}
+                Chapitre {safeActiveChapterIndex + 1} sur {chapters.length}
               </div>
               <h2 className="mt-2 text-xl font-bold">{activeChapter.title}</h2>
               <div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-zinc-300">
@@ -205,7 +210,7 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
               <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
                 <button
                   type="button"
-                  disabled={activeChapterIndex === 0}
+                  disabled={safeActiveChapterIndex === 0}
                   onClick={() => setActiveChapterIndex((index) => Math.max(0, index - 1))}
                   className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/5 disabled:opacity-40"
                 >
@@ -213,7 +218,7 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  disabled={activeChapterIndex >= chapters.length - 1}
+                  disabled={safeActiveChapterIndex >= chapters.length - 1}
                   onClick={() =>
                     setActiveChapterIndex((index) => Math.min(chapters.length - 1, index + 1))
                   }
@@ -266,7 +271,7 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
                   type="button"
                   key={chapter.id}
                   onClick={() => setActiveChapterIndex(index)}
-                  className={`w-full rounded-xl p-3 text-left transition-colors ${index === activeChapterIndex ? "bg-indigo-500/15 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}
+                  className={`w-full rounded-xl p-3 text-left transition-colors ${index === safeActiveChapterIndex ? "bg-indigo-500/15 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"}`}
                 >
                   <span className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                     Chapitre {index + 1}
