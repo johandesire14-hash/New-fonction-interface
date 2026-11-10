@@ -96,5 +96,25 @@ describe("creator course persistence", () => {
         },
       ],
     ]);
+
+
+  it("persists a Storage path when a module has an uploaded video", async () => {
+    await saveCreatorCourseToOffer({
+      offerId: "offer-1",
+      title: "Cours vidéo",
+      description: "",
+      modules: [{ title: "Chapitre vidéo", videoStorageKey: "creator-1/offer-1/lesson.mp4" }],
+    });
+
+    const recorded = (fromMock as any).recorded as Record<string, any[]>;
+    expect(recorded["course_modules:insert"]?.at(-1)).toEqual([
+      {
+        course_id: "course-row-1",
+        title: "Chapitre vidéo",
+        content: "",
+        video_url: "creator-1/offer-1/lesson.mp4",
+        sort_order: 0,
+      },
+    ]);
   });
 });

@@ -494,7 +494,9 @@ export async function upsertOfferToSupabase(input: {
 export interface CreatorCourseModuleInput {
   title: string;
   content?: string;
+  /** URL HTTPS (YouTube) ou chemin Storage <auth.uid>/<offerId>/<fichier>. */
   videoUrl?: string;
+  videoStorageKey?: string;
 }
 
 /** Enregistre un cours et ses modules dans les tables déjà lues par l’espace membre. */
@@ -583,7 +585,7 @@ export async function saveCreatorCourseToOffer(input: {
     course_id: courseRowId,
     title: module.title || `Module ${index + 1}`,
     content: module.content || "",
-    video_url: module.videoUrl || null,
+    video_url: module.videoUrl || module.videoStorageKey || null,
     sort_order: index,
   }));
   if (modulePayload.length > 0) {
