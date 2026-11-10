@@ -3540,37 +3540,16 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                   subscribersCount: offer.subscribersCount || 0,
                 }))}
                 onOpenCoursesWorkflow={(productIds) => {
-                  setActiveTab("applications");
-                  setSelectedCreatorApp("courses");
-                  setLinkedCreatorProductIds(
-                    productIds.length > 0
-                      ? productIds
-                      : selectedPreviewOfferId
-                        ? [selectedPreviewOfferId]
-                        : [],
+                  onOpenCreatorAppWorkspace?.(
+                    "courses",
+                    productIds.length > 0 ? productIds : selectedPreviewOfferId ? [selectedPreviewOfferId] : [],
                   );
-                  const saved = JSON.parse(
-                    localStorage.getItem(`mansa_creator_courses_${companyId}`) || "[]",
-                  );
-                  setCreatorCourses(Array.isArray(saved) ? saved : []);
-                  setEditingCreatorCourseId(null);
-                  setCourseCreationStep("library");
-                  setCreatorWorkflowNotice("Courses a bien été liée à l’offre sélectionnée.");
-                  setCreatorAppStep("content");
                 }}
                 onOpenFilesWorkflow={(productIds) => {
-                  setActiveTab("applications");
-                  setSelectedCreatorApp("files");
-                  setLinkedCreatorProductIds(
-                    productIds.length > 0
-                      ? productIds
-                      : selectedPreviewOfferId
-                        ? [selectedPreviewOfferId]
-                        : [],
+                  onOpenCreatorAppWorkspace?.(
+                    "files",
+                    productIds.length > 0 ? productIds : selectedPreviewOfferId ? [selectedPreviewOfferId] : [],
                   );
-                  setCreatorFileName("");
-                  setCreatorWorkflowNotice("Fichiers a bien été lié à l’offre sélectionnée.");
-                  setCreatorAppStep("content");
                 }}
                 onBackToDashboard={() => setActiveTab("accueil")}
               />
