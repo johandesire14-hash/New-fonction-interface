@@ -3,15 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectedAppsView } from "@/mansa/components/dashboard/ConnectedAppsView";
 import { FilesWorkspace } from "@/mansa/components/dashboard/FilesWorkspace";
 import { CreatorCoursesWorkspace } from "@/mansa/components/UserDashboard";
-import { saveDigitalAsset } from "@/mansa/utils/digitalAssetStorage";
+import { uploadOfferFile } from "@/mansa/services/supabaseStorageService";
 import { getCreatorAppProductIds } from "@/mansa/utils/creatorAppRouting";
 
-vi.mock("@/mansa/utils/digitalAssetStorage", () => ({
-  saveDigitalAsset: vi.fn(),
+const { fromMock, uploadOfferFileMock } = vi.hoisted(() => ({
+  fromMock: vi.fn(),
+  uploadOfferFileMock: vi.fn(),
+}));
+
+vi.mock("@/mansa/services/supabase", () => ({
+  supabase: { from: fromMock },
+}));
+
+vi.mock("@/mansa/services/supabaseStorageService", () => ({
+  uploadOfferFile: uploadOfferFileMock,
 }));
 
 const products = [{ id: "offer-real-1", title: "Mon offre", priceDisplay: "Inclus" }];
-const saveDigitalAssetMock = vi.mocked(saveDigitalAsset);
+const uploadOfferFileMocked = vi.mocked(uploadOfferFile);
 
 const openCatalogApp = (title: string) => {
   const heading = screen.getByRole("heading", { name: title });
@@ -23,7 +32,31 @@ const openCatalogApp = (title: string) => {
 describe("navigation catalogue Apps Store vers les workspaces créateur", () => {
   beforeEach(() => {
     localStorage.clear();
-    saveDigitalAssetMock.mockReset();
+    fromMock.mockReset();
+    uploadOfferFileMocked.mockReset();
+    fromMock.mockImplementation((table: string) => {
+      if (table === "offer_files") {
+        return {
+          select: () => ({
+            in: () => ({
+              order: async () => ({ data: [], error: null }),
+            }),
+          }),
+          delete: () => ({
+            in: async () => ({ error: null }),
+          }),
+          insert: async () => ({ error: null }),
+        };
+      }
+      if (table === "offer_courses") {
+        return {
+          select: () => ({
+            in: async () => ({ data: [], error: null }),
+          }),
+        };
+      }
+      throw new Error(`Table Supabase inattendue dans le test : ${table}`);
+    });
   });
 
   it("cible uniquement les offres qui contiennent l’application demandée", () => {
@@ -140,26 +173,29 @@ describe("navigation catalogue Apps Store vers les workspaces créateur", () => 
   });
 
   it("réaffiche les fichiers persistés quand le créateur rouvre l’application", async () => {
-    localStorage.setItem(
-      "mansa_creator_apps_company-1",
-      JSON.stringify([
-        {
-          appId: "files",
-          productIds: ["offer-real-1"],
-          files: [
-            {
-              id: "file-existing-1",
-              name: "Guide déjà enregistré.pdf",
-              size: "12 KB",
-              type: "application/pdf",
-              productIds: ["offer-real-1"],
-              storageKey: "asset-existing-1",
-              updatedAt: "2026-10-25T00:00:00.000Z",
-            },
-          ],
-        },
-      ]),
-    );
+    fromMock.mockImplementation((table: string) => {
+      if (table !== "offer_files") throw new Error(`Table Supabase inattendue : ${table}`);
+      return {
+        select: () => ({
+          in: () => ({
+            order: async () => ({
+              data: [
+                {
+                  id: "file-existing-1",
+                  offer_id: "offer-real-1",
+                  title: "Guide déjà enregistré.pdf",
+                  file_size: 12 * 1024,
+                  mime_type: "application/pdf",
+                  storage_path: "creator-1/offer-real-1/asset-existing-1",
+                  updated_at: "2026-10-25T00:00:00.000Z",
+                },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      };
+    });
 
     render(
       <FilesWorkspace
@@ -174,7 +210,7 @@ describe("navigation catalogue Apps Store vers les workspaces créateur", () => 
     expect(await screen.findByText("Guide déjà enregistré.pdf")).toBeInTheDocument();
   });
 
-  it("affiche deux écrans de gestion distincts pour Cours et Fichiers", () => {
+  it("affiche deux écrans de gestion distincts pour Cours et Fichiers", async () => {
     const filesScreen = render(
       <FilesWorkspace
         creatorId="creator-1"
@@ -196,8 +232,8 @@ describe("navigation catalogue Apps Store vers les workspaces créateur", () => 
         onBack={vi.fn()}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Cours & Formations" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Ajouter un cours/ }));
+    expect(await screen.findByRole("heading", { name: "Cours & Formations" })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: /Ajouter un cours/ }));
     expect(screen.getByRole("heading", { name: "Créer un cours" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nom du cours")).toBeInTheDocument();
     expect(screen.getByLabelText("Description")).toBeInTheDocument();
@@ -221,7 +257,7 @@ describe("navigation catalogue Apps Store vers les workspaces créateur", () => 
 
   it("montre le chargement puis l’erreur et réactive l’action après échec de téléversement", async () => {
     let rejectUpload: ((reason: Error) => void) | undefined;
-    saveDigitalAssetMock.mockReturnValue(
+    uploadOfferFileMocked.mockReturnValue(
       new Promise((_, reject) => {
         rejectUpload = reject;
       }),

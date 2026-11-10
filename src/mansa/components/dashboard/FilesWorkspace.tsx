@@ -111,6 +111,7 @@ const loadWorkspaceFiles = async (productIds: string[]): Promise<FileItem[]> => 
 };
 
 export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
+  creatorId,
   companyId,
   productIds,
   products,
