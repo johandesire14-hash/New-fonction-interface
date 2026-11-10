@@ -117,4 +117,29 @@ describe("creator course persistence", () => {
       },
     ]);
   });
+
+  it("enregistre un nouveau chapitre lors de la modification d’un cours existant", async () => {
+    await saveCreatorCourseToOffer({
+      offerId: "offer-1",
+      courseRowId: "course-row-1",
+      title: "Cours existant",
+      description: "Description mise à jour",
+      modules: [{ title: "Nouveau chapitre", content: "Texte du nouveau chapitre" }],
+    });
+
+    const recorded = (fromMock as any).recorded as Record<string, any[]>;
+    expect(recorded["offer_courses:update"]).toContainEqual({
+      title: "Cours existant",
+      description: "Description mise à jour",
+    });
+    expect(recorded["course_modules:insert"]?.at(-1)).toEqual([
+      {
+        course_id: "course-row-1",
+        title: "Nouveau chapitre",
+        content: "Texte du nouveau chapitre",
+        video_url: null,
+        sort_order: 0,
+      },
+    ]);
+  });
 });

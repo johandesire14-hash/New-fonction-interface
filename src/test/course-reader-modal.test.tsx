@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CourseReaderModal } from "@/mansa/components/dashboard/CourseReaderModal";
 import { getOfferFileUrl } from "@/mansa/services/supabaseStorageService";
@@ -58,6 +58,38 @@ describe("CourseReaderModal", () => {
       "src",
       "https://www.youtube-nocookie.com/embed/abc123456",
     );
+  });
+
+  it("affiche deux chapitres, dont un vide et un chapitre YouTube", () => {
+    render(
+      <CourseReaderModal
+        {...baseProps}
+        course={{
+          id: "course-two-chapters",
+          title: "Cours à deux chapitres",
+          chapters: [
+            {
+              id: "chapter-text",
+              title: "Chapitre texte",
+              content: "Texte du premier chapitre",
+            },
+            {
+              id: "chapter-youtube",
+              title: "Chapitre vidéo",
+              content: "",
+              videoUrl: "https://youtu.be/abc123456",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("2 chapitre(s)")).toBeInTheDocument();
+    expect(screen.getAllByText("Chapitre texte")).toHaveLength(2);
+    expect(screen.getByText("Chapitre vidéo")).toBeInTheDocument();
+    expect(screen.getByText("Texte du premier chapitre")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Chapitre 2 Chapitre vidéo/ }));
+    expect(screen.getByText("Aucun texte n’a été ajouté à ce chapitre.")).toBeInTheDocument();
   });
 
   it("génère l’URL signée d’une vidéo stockée sans erreur", async () => {

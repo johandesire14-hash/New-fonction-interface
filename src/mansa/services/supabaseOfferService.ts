@@ -195,20 +195,30 @@ export async function fetchCompanyOffersFromSupabase(
         badge: f.is_free_preview ? "Aperçu Gratuit" : undefined,
       }));
 
-      const courses: CourseResourceItem[] = (coursesData || []).map((c) => ({
-        id: c.id,
-        title: c.title || "Formation",
-        description: c.description || "",
-        modulesCount: Array.isArray(c.course_modules) ? c.course_modules.length : 0,
-        modules: Array.isArray(c.course_modules)
+      const courses: CourseResourceItem[] = (coursesData || []).map((c) => {
+        const chapters = Array.isArray(c.course_modules)
           ? c.course_modules.map((m: any) => ({
               id: m.id,
               title: m.title || "Module",
               content: m.content || "",
               videoUrl: m.video_url || "",
+              ...(m.video_url && /^https?:\/\//i.test(m.video_url)
+                ? { youtubeUrl: m.video_url }
+                : m.video_url
+                  ? { videoStorageKey: m.video_url }
+                  : {}),
             }))
-          : [],
-      }));
+          : [];
+        return {
+          id: c.id,
+          title: c.title || "Formation",
+          description: c.description || "",
+          modulesCount: chapters.length,
+          chapters,
+          modules: chapters,
+          courseModules: chapters,
+        };
+      });
 
       return mapOfferRowToPlatformOffer(row, "", {
         telegramChannels,

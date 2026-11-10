@@ -17,7 +17,7 @@ import {
 import type { CourseResourceItem, CreatorPlatformOffer } from "../../types";
 
 type CourseRecord = CourseResourceItem & {
-  chapters?: Array<string | { id?: string; title?: string; content?: string }>;
+  chapters?: Array<string | { id?: string; title?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
   chapterContents?: string[];
   courseModules?: Array<{ id?: string; title?: string; duration?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
   modules?: Array<{ id?: string; title?: string; duration?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
@@ -40,6 +40,7 @@ type CourseFilter = "all" | "in_progress" | "completed" | "not_started";
 const getCourseLessons = (course: CourseRecord) => {
   if (course.chapters?.length) return course.chapters.length;
   if (course.courseModules?.length) return course.courseModules.length;
+  if (course.modules?.length) return course.modules.length;
   return Math.max(1, course.modulesCount || 1);
 };
 

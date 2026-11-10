@@ -988,7 +988,18 @@ export function getMemberAuthorizedCourses(
       for (const co of offer.courses) {
         if (!seen.has(co.id)) {
           seen.add(co.id);
-          courses.push(co);
+          if (Array.isArray(co.chapters)) {
+            courses.push(co);
+            continue;
+          }
+          const chapters = co.chapters || co.courseModules || co.modules || [];
+          courses.push({
+            ...co,
+            chapters,
+            modules: co.modules || chapters,
+            courseModules: co.courseModules || chapters,
+            modulesCount: co.modulesCount ?? chapters.length,
+          });
         }
       }
     }

@@ -36,6 +36,7 @@ interface ReaderCourse {
   chapters?: Array<string | CourseChapter>;
   chapterContents?: string[];
   courseModules?: CourseModule[];
+  modules?: CourseModule[];
   youtubeUrl?: string;
   videoStorageKey?: string;
   attachmentStorageKey?: string;
@@ -92,6 +93,16 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
     const courseModules = course.courseModules || [];
     if (courseModules.length) {
       return courseModules.map((module, index) => ({
+        id: module.id || `${course.id}-module-${index}`,
+        title: module.title || `Module ${index + 1}`,
+        content: module.content || module.description || "",
+        ...(module.videoUrl ? { videoUrl: module.videoUrl } : {}),
+        ...(module.videoStorageKey ? { videoStorageKey: module.videoStorageKey } : {}),
+      }));
+    }
+    const modules = course.modules || [];
+    if (modules.length) {
+      return modules.map((module, index) => ({
         id: module.id || `${course.id}-module-${index}`,
         title: module.title || `Module ${index + 1}`,
         content: module.content || module.description || "",

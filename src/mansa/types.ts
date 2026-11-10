@@ -208,6 +208,7 @@ export interface CourseChapter {
   title: string;
   content?: string;
   youtubeUrl?: string;
+  videoUrl?: string;
   videoStorageKey?: string;
 }
 
@@ -216,6 +217,9 @@ export interface CourseResourceItem {
   title: string;
   description?: string;
   modulesCount?: number;
+  chapters?: CourseChapter[];
+  modules?: CourseChapter[];
+  courseModules?: CourseChapter[];
   duration?: string;
   accessUrl?: string;
   associatedOfferId?: string;
