@@ -96,7 +96,7 @@ describe("creator course persistence", () => {
         },
       ],
     ]);
-
+  });
 
   it("persists a Storage path when a module has an uploaded video", async () => {
     await saveCreatorCourseToOffer({
