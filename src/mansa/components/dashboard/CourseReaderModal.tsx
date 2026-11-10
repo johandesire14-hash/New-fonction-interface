@@ -120,11 +120,6 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
     return () => { active = false; };
   }, [activeVideoSource]);
 
-  return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [course?.id, course?.videoStorageKey]);
 
   return (
     <div
