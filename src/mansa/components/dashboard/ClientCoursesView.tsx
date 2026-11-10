@@ -19,7 +19,8 @@ import type { CourseResourceItem, CreatorPlatformOffer } from "../../types";
 type CourseRecord = CourseResourceItem & {
   chapters?: Array<string | { id?: string; title?: string; content?: string }>;
   chapterContents?: string[];
-  courseModules?: Array<{ id?: string; title?: string; duration?: string; content?: string }>;
+  courseModules?: Array<{ id?: string; title?: string; duration?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
+  modules?: Array<{ id?: string; title?: string; duration?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
   coverImage?: string;
   imageUrl?: string;
 };

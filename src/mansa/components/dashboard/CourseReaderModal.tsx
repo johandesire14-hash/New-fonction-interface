@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronLeft, ChevronRight, Download, X } from "lucide-react";
-import { getDigitalAssetObjectUrl } from "../../utils/digitalAssetStorage";
+import { getOfferFileUrl } from "../../services/supabaseStorageService";
 import { getUserFacingErrorMessage } from "../../utils/userFacingError";
 
 interface CourseChapter {
@@ -8,6 +8,8 @@ interface CourseChapter {
   title?: string;
   content?: string;
   description?: string;
+  videoUrl?: string;
+  videoStorageKey?: string;
 }
 
 interface CourseModule {
@@ -15,12 +17,16 @@ interface CourseModule {
   title?: string;
   content?: string;
   description?: string;
+  videoUrl?: string;
+  videoStorageKey?: string;
 }
 
 interface NormalizedCourseChapter {
   id: string;
   title: string;
   content: string;
+  videoUrl?: string;
+  videoStorageKey?: string;
 }
 
 interface ReaderCourse {
@@ -79,6 +85,8 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
         content:
           course.chapterContents?.[index] ||
           (typeof chapter === "object" ? chapter.content || "" : ""),
+        ...(typeof chapter === "object" && chapter.videoUrl ? { videoUrl: chapter.videoUrl } : {}),
+        ...(typeof chapter === "object" && chapter.videoStorageKey ? { videoStorageKey: chapter.videoStorageKey } : {}),
       }));
     }
     const courseModules = course.courseModules || [];
@@ -87,6 +95,8 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
         id: module.id || `${course.id}-module-${index}`,
         title: module.title || `Module ${index + 1}`,
         content: module.content || module.description || "",
+        ...(module.videoUrl ? { videoUrl: module.videoUrl } : {}),
+        ...(module.videoStorageKey ? { videoStorageKey: module.videoStorageKey } : {}),
       }));
     }
     return [];
@@ -94,8 +104,8 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
-  const youtubeEmbedUrl = getYoutubeEmbedUrl(course?.youtubeUrl);
-  const activeChapter = chapters[activeChapterIndex];
+  const activeVideoSource = activeChapter?.videoUrl || activeChapter?.videoStorageKey || course?.videoStorageKey;
+  const youtubeEmbedUrl = getYoutubeEmbedUrl(activeChapter?.videoUrl || course?.youtubeUrl);
 
   useEffect(() => {
     setActiveChapterIndex(0);
@@ -103,22 +113,14 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
 
   useEffect(() => {
     let active = true;
-    let objectUrl: string | null = null;
     setVideoUrl(null);
     setVideoError(null);
-    if (!course?.videoStorageKey) return;
-    getDigitalAssetObjectUrl(course.videoStorageKey)
-      .then((url) => {
-        objectUrl = url;
-        if (active) setVideoUrl(url);
-        else URL.revokeObjectURL(url);
-      })
-      .catch((error) => {
-        console.error("Course video could not be opened:", error);
-        if (active)
-          setVideoError(getUserFacingErrorMessage(error, "La vidéo ne peut pas être ouverte. Réessayez."));
-      });
-    return () => {
+    if (!activeVideoSource || /^https?:\/\//i.test(activeVideoSource)) return;
+    getOfferFileUrl(activeVideoSource).then((url) => { if (active) setVideoUrl(url); }).catch((error) => { if (active) setVideoError(getUserFacingErrorMessage(error, "La vidéo ne peut pas être ouverte.")); });
+    return () => { active = false; };
+  }, [activeVideoSource]);
+
+  return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -177,7 +179,7 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
               <div className="flex aspect-video items-center justify-center px-6 text-center text-sm text-amber-200">
                 {videoError}
               </div>
-            ) : course?.videoStorageKey ? (
+            ) : activeVideoSource ? (
               <div className="flex aspect-video items-center justify-center text-sm text-zinc-400">
                 Chargement de la vidéo…
               </div>

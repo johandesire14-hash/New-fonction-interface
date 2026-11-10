@@ -17,6 +17,7 @@ interface ClientFile extends EbookResourceItem {
   type?: string;
   fileSize?: string;
   updatedAt?: string;
+  storageKey?: string;
 }
 
 interface ClientFilesViewProps {
