@@ -203,6 +203,14 @@ export interface EbookResourceItem {
   associatedOfferTitle?: string;
 }
 
+export interface CourseChapter {
+  id: string;
+  title: string;
+  content?: string;
+  youtubeUrl?: string;
+  videoStorageKey?: string;
+}
+
 export interface CourseResourceItem {
   id: string;
   title: string;
