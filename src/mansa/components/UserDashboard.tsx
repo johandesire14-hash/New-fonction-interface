@@ -62,6 +62,9 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { safeStorage } from "../utils/storage";
 import { getUserFacingErrorMessage } from "../utils/userFacingError";
+import { supabase } from "../services/supabase";
+import { deleteOfferFile, uploadOfferFile } from "../services/supabaseStorageService";
+import { deleteCreatorCourseFromOffer, saveCreatorCourseToOffer } from "../services/supabaseOfferService";
 import {
   ProductCreationStudio,
   CreatedProductData,
@@ -284,7 +287,7 @@ export const CreatorCoursesWorkspace: React.FC<{
   productIds: string[];
   products: CreatedProductData[];
   onBack: () => void;
-}> = ({ companyId, productIds, products, onBack }) => {
+}> = ({ creatorId, companyId, productIds, products, onBack }) => {
   type CourseChapter = {
     id: string;
     title: string;
@@ -299,57 +302,33 @@ export const CreatorCoursesWorkspace: React.FC<{
     description: string;
     chapters: CourseChapter[];
   };
-  const storageKey = `mansa_creator_courses_${companyId}`;
-  const [courses, setCourses] = useState<CreatorCourse[]>(() => {
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem(storageKey) || "[]");
-      if (!Array.isArray(saved)) return [];
-      return saved.map((courseValue): CreatorCourse => {
-        const course =
-          courseValue && typeof courseValue === "object"
-            ? (courseValue as Record<string, unknown>)
-            : {};
-        const id = typeof course["id"] === "string" ? course["id"] : `course-${Date.now()}`;
-        const rawChapters = Array.isArray(course["chapters"]) ? course["chapters"] : [];
-        const normalizedChapters = rawChapters.map((chapterValue, index): CourseChapter => {
-          if (typeof chapterValue === "string") {
-            return {
-              id: `${id}-chapter-${index}`,
-              title: chapterValue || `Chapitre ${index + 1}`,
-              content: "",
-            };
-          }
-          const chapter =
-            chapterValue && typeof chapterValue === "object"
-              ? (chapterValue as Record<string, unknown>)
-              : {};
-          return {
-            id: typeof chapter["id"] === "string" ? chapter["id"] : `${id}-chapter-${index}`,
-            title:
-              typeof chapter["title"] === "string" ? chapter["title"] : `Chapitre ${index + 1}`,
-            content: typeof chapter["content"] === "string" ? chapter["content"] : "",
-            ...(typeof chapter["youtubeUrl"] === "string"
-              ? { youtubeUrl: chapter["youtubeUrl"] }
-              : {}),
-            ...(typeof chapter["videoStorageKey"] === "string"
-              ? { videoStorageKey: chapter["videoStorageKey"] }
-              : {}),
-            ...(typeof chapter["videoFileName"] === "string"
-              ? { videoFileName: chapter["videoFileName"] }
-              : {}),
-          };
+  const [courses, setCourses] = useState<CreatorCourse[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const loadCourses = async () => {
+      setIsLoadingCourses(true);
+      try {
+        const { data, error } = await supabase
+          .from("offer_courses")
+          .select("*, course_modules(*)")
+          .in("offer_id", productIds);
+        if (error) throw error;
+        const byId = new Map<string, CreatorCourse>();
+        (data || []).forEach((row: any) => {
+          const course = byId.get(row.id) || { id: row.id, title: row.title || "Cours sans titre", description: row.description || "", chapters: [] };
+          course.chapters = (row.course_modules || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((module: any) => ({ id: module.id, title: module.title || "Chapitre", content: module.content || "", ...(module.video_url?.startsWith("http") ? { youtubeUrl: module.video_url } : module.video_url ? { videoStorageKey: module.video_url } : {}) }));
+          byId.set(row.id, course);
         });
-        return {
-          id,
-          title: typeof course["title"] === "string" ? course["title"] : "Cours sans titre",
-          description: typeof course["description"] === "string" ? course["description"] : "",
-          chapters: normalizedChapters,
-        };
-      });
-    } catch {
-      return [];
-    }
-  });
+        if (!cancelled) setCourses(Array.from(byId.values()));
+      } catch (error) {
+        if (!cancelled) setSaveError(getUserFacingErrorMessage(error, "Impossible de charger les cours."));
+      } finally { if (!cancelled) setIsLoadingCourses(false); }
+    };
+    void loadCourses();
+    return () => { cancelled = true; };
+  }, [productIds]);
   const [editing, setEditing] = useState(false);
   const [courseCreationStep, setCourseCreationStep] = useState<"details" | "chapters">("details");
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
@@ -358,7 +337,6 @@ export const CreatorCoursesWorkspace: React.FC<{
   const [chapters, setChapters] = useState<CourseChapter[]>([]);
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
   const [selectedVideoFiles, setSelectedVideoFiles] = useState<Record<string, File>>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const linkedProducts = products.filter((product) => productIds.includes(product.id));
   const activeChapter = chapters.find((chapter) => chapter.id === activeChapterId) || null;
@@ -399,43 +377,32 @@ export const CreatorCoursesWorkspace: React.FC<{
   };
   const saveCourse = async () => {
     if (!title.trim() || isSaving) return;
+    if (productIds.length === 0) { setSaveError("Sélectionnez au moins une offre avant d’enregistrer le cours."); return; }
     setIsSaving(true);
     setSaveError(null);
     const courseId = editingCourseId || `course-${Date.now()}`;
     try {
-      const { saveDigitalAsset } = await import("../utils/digitalAssetStorage");
-      const savedChapters = await Promise.all(
-        chapters.map(async (chapter) => {
+      if (productIds.length === 0) throw new Error("Sélectionnez au moins une offre pour publier le cours.");
+      const savedByOffer = await Promise.all(productIds.map(async (offerId) => {
+        const savedChapters = await Promise.all(chapters.map(async (chapter) => {
           const file = selectedVideoFiles[chapter.id];
           if (!file) return chapter;
-          const asset = await saveDigitalAsset(companyId, `${courseId}-${chapter.id}`, file);
-          return {
-            ...chapter,
-            videoStorageKey: asset.storageKey,
-            videoFileName: file.name,
-          };
-        }),
-      );
-      const course: CreatorCourse = {
-        id: courseId,
-        title: title.trim(),
-        description: description.trim(),
-        chapters: savedChapters,
-      };
-      const next = editingCourseId
-        ? courses.map((existing) => (existing.id === courseId ? course : existing))
-        : [...courses, course];
-      if (editingCourseId && !courses.some((existing) => existing.id === courseId)) {
-        next.push(course);
-      }
-      localStorage.setItem(storageKey, JSON.stringify(next));
-      setCourses(next);
+          const stored = await uploadOfferFile(creatorId, offerId, file, `${courseId}-${chapter.id}-${file.name}`);
+          const uploadedChapter = { ...chapter, videoStorageKey: stored.storagePath, videoFileName: file.name };
+          delete uploadedChapter.youtubeUrl;
+          return uploadedChapter;
+        }));
+        const rowId = await saveCreatorCourseToOffer({ offerId, title: title.trim(), description: description.trim(), courseRowId: editingCourseId || undefined, modules: savedChapters.map((chapter) => ({ title: chapter.title, content: chapter.content, ...(chapter.youtubeUrl ? { videoUrl: chapter.youtubeUrl } : {}), ...(chapter.videoStorageKey ? { videoStorageKey: chapter.videoStorageKey } : {}) })) });
+        return { rowId, savedChapters };
+      }));
+      const course: CreatorCourse = { id: savedByOffer[0]?.rowId || courseId, title: title.trim(), description: description.trim(), chapters: savedByOffer[0]?.savedChapters || chapters };
+      setCourses((current) => editingCourseId ? current.map((existing) => existing.id === editingCourseId ? course : existing) : [...current, course]);
       setEditing(false);
       setEditingCourseId(null);
       setSelectedVideoFiles({});
     } catch (error) {
       console.error("Creator course save failed:", error);
-      setSaveError(getUserFacingErrorMessage(error, "Enregistrement impossible. Réessayez."));
+      setSaveError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSaving(false);
     }
@@ -695,7 +662,7 @@ export const CreatorCoursesWorkspace: React.FC<{
           Retour aux applications
         </button>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {isLoadingCourses ? <p className="text-sm text-zinc-400">Chargement des cours…</p> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <button
           onClick={startNewCourse}
           className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-[#0c0d0e] text-zinc-400 hover:border-purple-500/60 hover:text-white"
@@ -718,7 +685,7 @@ export const CreatorCoursesWorkspace: React.FC<{
             <div className="mt-1 text-xs text-zinc-500">{course.chapters.length} chapitre(s)</div>
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   );
 };
