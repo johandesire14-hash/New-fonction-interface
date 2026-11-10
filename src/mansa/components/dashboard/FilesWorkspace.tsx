@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, FileText, Pencil, Plus, Replace, Trash2, Upload, X } from "lucide-react";
-import { saveDigitalAsset } from "../../utils/digitalAssetStorage";
-import { getOffersForCompany } from "../../utils/rightsAccessEngine";
+import { supabase } from "../../services/supabase";
+import { uploadOfferFile, deleteOfferFile } from "../../services/supabaseStorageService";
 import { getUserFacingErrorMessage } from "../../utils/userFacingError";
-import { dispatchProductUpdates } from "../../utils/productUpdateEvents";
+
 
 interface FilesWorkspaceProps {
   creatorId: string;
@@ -54,13 +54,7 @@ const formatSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-import { deleteOfferFile } from "../../services/supabaseStorageService";
 
-const removeStoredAsset = async (storageKey: string) => {
-  if (storageKey) {
-    await deleteOfferFile(storageKey);
-  }
-};
 
 const createInitialFiles = (products: ProductRecord[], productIds: string[]): FileItem[] => {
   const byId = new Map<string, FileItem>();
@@ -100,77 +94,19 @@ const createInitialFiles = (products: ProductRecord[], productIds: string[]): Fi
   return Array.from(byId.values());
 };
 
-const loadWorkspaceFiles = (
-  companyId: string,
-  productIds: string[],
-  products: ProductRecord[],
-): FileItem[] => {
-  if (typeof window === "undefined" || !companyId || productIds.length === 0) return [];
-
-  const savedOffers = getOffersForCompany(companyId) as ProductRecord[];
-  const mergedProducts = new Map<string, ProductRecord>();
-  [...products, ...savedOffers].forEach((product) => {
-    const existing = mergedProducts.get(product.id);
-    mergedProducts.set(product.id, { ...existing, ...product });
+const loadWorkspaceFiles = async (productIds: string[]): Promise<FileItem[]> => {
+  if (!productIds.length) return [];
+  const { data, error } = await supabase.from("offer_files").select("*").in("offer_id", productIds).order("created_at", { ascending: false });
+  if (error) throw error;
+  const byId = new Map<string, FileItem>();
+  (data || []).forEach((row: any) => {
+    const current = byId.get(row.id);
+    byId.set(row.id, {
+      id: row.id, name: row.title || row.name || "Fichier sans nom", size: row.file_size ? formatSize(row.file_size) : "Taille inconnue",
+      type: row.mime_type || "application/octet-stream", productIds: Array.from(new Set([...(current?.productIds || []), row.offer_id])),
+      storageKey: row.storage_path, updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
+    });
   });
-  const byId = new Map(
-    createInitialFiles(Array.from(mergedProducts.values()), productIds).map((file) => [
-      file.id,
-      file,
-    ]),
-  );
-
-  try {
-    const appRecords: unknown = JSON.parse(
-      localStorage.getItem(`mansa_creator_apps_${companyId}`) || "[]",
-    );
-    if (Array.isArray(appRecords)) {
-      appRecords
-        .filter((record) => record && typeof record === "object" && record.appId === "files")
-        .forEach((record) => {
-          const app = record as { productIds?: unknown; files?: unknown };
-          const appProductIds = Array.isArray(app.productIds)
-            ? app.productIds.filter((id): id is string => typeof id === "string")
-            : [];
-          if (!Array.isArray(app.files)) return;
-          app.files.forEach((value) => {
-            if (!value || typeof value !== "object") return;
-            const file = value as Partial<FileItem>;
-            if (typeof file.id !== "string") return;
-            const linkedIds = Array.isArray(file.productIds)
-              ? file.productIds.filter((id): id is string => typeof id === "string")
-              : appProductIds;
-            const scopedProductIds = linkedIds.filter((id) => productIds.includes(id));
-            if (scopedProductIds.length === 0) return;
-            const existing = byId.get(file.id);
-            byId.set(file.id, {
-              ...existing,
-              id: file.id,
-              name:
-                typeof file.name === "string" ? file.name : existing?.name || "Fichier sans nom",
-              size: typeof file.size === "string" ? file.size : existing?.size || "Taille inconnue",
-              type:
-                typeof file.type === "string"
-                  ? file.type
-                  : existing?.type || "application/octet-stream",
-              productIds: Array.from(
-                new Set([...(existing?.productIds || []), ...scopedProductIds]),
-              ),
-              storageKey:
-                typeof file.storageKey === "string" ? file.storageKey : existing?.storageKey,
-              updatedAt:
-                typeof file.updatedAt === "string"
-                  ? file.updatedAt
-                  : existing?.updatedAt || new Date().toISOString(),
-              ...(typeof file.downloadUrl === "string" ? { downloadUrl: file.downloadUrl } : {}),
-            });
-          });
-        });
-    }
-  } catch {
-    // If one cache is malformed, keep valid resources loaded from the other source.
-  }
-
   return Array.from(byId.values());
 };
 
@@ -187,18 +123,13 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [files, setFiles] = useState<FileItem[]>(() => createInitialFiles(products, productIds));
+  const [files, setFiles] = useState<FileItem[]>([]);
 
   useEffect(() => {
-    const reloadFiles = () => setFiles(loadWorkspaceFiles(companyId, productIds, products));
-    reloadFiles();
-    window.addEventListener("mansa_products_updated", reloadFiles);
-    window.addEventListener("storage", reloadFiles);
-    return () => {
-      window.removeEventListener("mansa_products_updated", reloadFiles);
-      window.removeEventListener("storage", reloadFiles);
-    };
-  }, [companyId, productIds, products]);
+    let cancelled = false;
+    void loadWorkspaceFiles(productIds).then((loaded) => { if (!cancelled) setFiles(loaded); }).catch((error) => { if (!cancelled) setSaveError(error instanceof Error ? error.message : String(error)); });
+    return () => { cancelled = true; };
+  }, [productIds]);
 
   const linkedProductNames = useMemo(
     () =>
@@ -211,97 +142,12 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
     [productIds, products],
   );
 
-  const persistFiles = (nextFiles: FileItem[]) => {
-    if (!companyId)
-      throw new Error("Impossible d’enregistrer les métadonnées sans identifiant d’entreprise.");
-
-    const offersKey = `mansa_creator_offers_${companyId}`;
-    const appsKey = `mansa_creator_apps_${companyId}`;
-    const previousOffers = localStorage.getItem(offersKey);
-    const previousApps = localStorage.getItem(appsKey);
-    try {
-      const parsedOffers: unknown = JSON.parse(previousOffers || "[]");
-      const savedOffers: ProductRecord[] = Array.isArray(parsedOffers) ? parsedOffers : [];
-      const sourceOffers = savedOffers.length ? savedOffers : products;
-      const nextOffers = sourceOffers.map((offer) => {
-        if (!productIds.includes(offer.id)) return offer;
-        const currentFiles = files.filter((file) => file.productIds.includes(offer.id));
-        const updatedFiles = nextFiles.filter((file) => file.productIds.includes(offer.id));
-        const managedIds = new Set([
-          ...currentFiles.map((file) => file.id),
-          ...updatedFiles.map((file) => file.id),
-        ]);
-        const digitalFiles = (offer.digitalFiles || []).filter((file) => !managedIds.has(file.id));
-        const updatedDigitalFiles: ProductDigitalFile[] = updatedFiles.map((file) => ({
-          ...((offer.digitalFiles || []).find((entry) => entry.id === file.id) || {}),
-          id: file.id,
-          name: file.name,
-          title: file.name,
-          size: file.size,
-          type: file.type,
-          storageKey: file.storageKey,
-          updatedAt: file.updatedAt,
-          isFreePreview: false,
-        }));
-        const ebooks = (offer.ebooks || []).filter((ebook) => !managedIds.has(ebook.id));
-        const updatedEbooks = updatedFiles.map((file) => ({
-          ...((offer.ebooks || []).find((ebook) => ebook.id === file.id) || {}),
-          id: file.id,
-          title: file.name,
-          size: file.size,
-          fileSize: file.size,
-          storageKey: file.storageKey,
-          fileId: file.id,
-          downloadUrl: undefined,
-        }));
-        return {
-          ...offer,
-          digitalFiles: [...digitalFiles, ...updatedDigitalFiles],
-          ebooks: [...ebooks, ...updatedEbooks],
-          ...(updatedFiles.length > 0
-            ? { includedApps: Array.from(new Set([...(offer.includedApps || []), "Fichiers"])) }
-            : {}),
-        };
-      });
-
-      const parsedApps: unknown = JSON.parse(previousApps || "[]");
-      const appRecords = Array.isArray(parsedApps) ? parsedApps : [];
-      const existingFiles = appRecords
-        .filter((app: { appId?: string }) => app.appId === "files")
-        .flatMap((app: { files?: FileItem[] }) => app.files || []);
-      const preservedFiles = existingFiles.filter(
-        (file) => !file.productIds?.some((id) => productIds.includes(id)),
-      );
-      const scopedFiles = nextFiles.filter((file) =>
-        file.productIds.some((id) => productIds.includes(id)),
-      );
-      const nextApps = [
-        ...appRecords.filter((app: { appId?: string }) => app.appId !== "files"),
-        {
-          appId: "files",
-          productIds: Array.from(
-            new Set([...preservedFiles, ...scopedFiles].flatMap((file) => file.productIds)),
-          ),
-          files: [...preservedFiles, ...scopedFiles],
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-
-      try {
-        localStorage.removeItem(offersKey);
-      } catch {}
-      localStorage.setItem(appsKey, JSON.stringify(nextApps));
-      dispatchProductUpdates();
-    } catch (error) {
-      try {
-        localStorage.removeItem(offersKey);
-        if (previousApps === null) localStorage.removeItem(appsKey);
-        else localStorage.setItem(appsKey, previousApps);
-      } catch {
-        // Preserve the original persistence error; the UI must not report success.
-      }
-      throw error;
-    }
+  const persistFiles = async (nextFiles: FileItem[]) => {
+    const scoped = nextFiles.filter((file) => file.productIds.some((id) => productIds.includes(id)));
+    const { error: removeError } = await supabase.from("offer_files").delete().in("offer_id", productIds);
+    if (removeError) throw removeError;
+    const rows = scoped.flatMap((file) => productIds.filter((offerId) => file.productIds.includes(offerId)).map((offerId) => ({ id: file.id, offer_id: offerId, title: file.name, storage_path: file.storageKey, file_size: Number.parseInt(file.size) || null, mime_type: file.type })));
+    if (rows.length) { const { error } = await supabase.from("offer_files").insert(rows); if (error) throw error; }
   };
 
   const handleAddFile = async () => {
@@ -315,18 +161,18 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
     setSaveError(null);
     const id = `file-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now()}`;
     try {
-      const stored = await saveDigitalAsset(companyId, id, selectedFile);
+      const stored = await uploadOfferFile(creatorId, productIds[0], selectedFile, `${id}-${selectedFile.name}`);
       const newFile: FileItem = {
         id,
         name: fileName.trim() || selectedFile.name,
         size: formatSize(selectedFile.size),
         type: selectedFile.type || "application/octet-stream",
         productIds: [...productIds],
-        storageKey: stored.storageKey,
+        storageKey: stored.storagePath,
         updatedAt: stored.updatedAt,
       };
       const nextFiles = [...files, newFile];
-      persistFiles(nextFiles);
+      await persistFiles(nextFiles);
       setFiles(nextFiles);
       setFileName("");
       setSelectedFile(null);
@@ -368,18 +214,18 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
       };
       if (editMode === "replace" && selectedFile) {
         const replacementAssetId = `${editingFile.id}-replacement-${Date.now()}`;
-        const stored = await saveDigitalAsset(companyId, replacementAssetId, selectedFile);
+        const stored = await uploadOfferFile(creatorId, productIds[0], selectedFile, `${replacementAssetId}-${selectedFile.name}`);
         updatedFile = {
           ...updatedFile,
           name: fileName.trim() || selectedFile.name,
           size: formatSize(selectedFile.size),
           type: selectedFile.type || "application/octet-stream",
-          storageKey: stored.storageKey,
+          storageKey: stored.storagePath,
           updatedAt: stored.updatedAt,
         };
       }
       const nextFiles = files.map((file) => (file.id === editingFile.id ? updatedFile : file));
-      persistFiles(nextFiles);
+      await persistFiles(nextFiles);
       setFiles(nextFiles);
       setEditingFile(null);
       setSelectedFile(null);
@@ -404,11 +250,11 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
     const nextFiles = files.filter((entry) => entry.id !== file.id);
     try {
       persistFiles(nextFiles);
-      if (file.storageKey) await removeStoredAsset(file.storageKey);
+      if (file.storageKey) { const { data: refs } = await supabase.from("offer_files").select("id").eq("storage_path", file.storageKey); if (!refs?.length) await deleteOfferFile(file.storageKey); }
       setFiles(nextFiles);
     } catch (error) {
       try {
-        persistFiles(files);
+        await persistFiles(files);
       } catch {
         // Keep the failure visible if metadata rollback itself is unavailable.
       }
@@ -461,9 +307,7 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
             className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs leading-relaxed text-amber-200"
             role="note"
           >
-            Les métadonnées sont enregistrées dans le cache local des offres. Les fichiers eux-mêmes
-            sont conservés dans IndexedDB sur cet appareil uniquement ; ils ne sont pas synchronisés
-            entre appareils.
+            Les fichiers sont enregistrés dans votre bibliothèque Supabase et restent disponibles sur vos appareils.
           </p>
           <div className="flex flex-wrap gap-2">
             {linkedProductNames.map((name, index) => (
