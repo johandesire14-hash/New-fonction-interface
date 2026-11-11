@@ -46,6 +46,7 @@ import {
   setCustomerBanned,
 } from "../../utils/customerManagementStorage";
 import { addUserNotification } from "../../utils/userNotifications";
+import { fetchCreatorCommunityMembers } from "../../services/supabaseCreatorMemberService";
 
 interface CustomerMember {
   id: string;
@@ -101,11 +102,56 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     }
     const creatorKey = profile?.uid || user?.email || "creator-default";
     let remoteCustomers: CustomerMember[] = [];
+    let supabaseMembers: CustomerMember[] = [];
+    const mapSupabaseMember = (
+      member: Awaited<ReturnType<typeof fetchCreatorCommunityMembers>>[number],
+    ): CustomerMember => {
+      const initials = (member.name || "MB")
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+      const offerNames = member.offers.map((offer) => offer.title);
+      const offerPrices = member.offers.map((offer) => offer.priceDisplay);
+      return {
+        id: `supabase-member-${member.memberId}`,
+        name: member.name,
+        email: member.email,
+        avatar: initials,
+        productTitle: offerNames.length > 0 ? offerNames.join(", ") : "Adhésion communauté",
+        plan: offerPrices.length > 0 ? offerPrices.join(" · ") : "Accès membre",
+        totalSpent: 0,
+        totalSpentFormatted: "—",
+        countryFlag: "🇨🇮",
+        countryName: member.country || "Non renseigné",
+        location: member.country || "Non renseigné",
+        joinedDate: new Date(member.joinedAt).toLocaleDateString("fr-FR"),
+        status: member.status,
+      };
+    };
     const refreshCustomers = () => {
-      const knownEmails = new Set(
-        remoteCustomers.map((customer) => customer.email.trim().toLowerCase()),
+      const supabaseByEmail = new Map(
+        supabaseMembers.map((customer) => [customer.email.trim().toLowerCase(), customer]),
       );
-      const localMembers: CustomerMember[] = getLocalCompanyMembers(activeCompanyId, activeCompanyName)
+      const mergedRemote = remoteCustomers.map((customer) => {
+        const serverMember = supabaseByEmail.get(customer.email.trim().toLowerCase());
+        return serverMember
+          ? {
+              ...customer,
+              productTitle: serverMember.productTitle,
+              plan: serverMember.plan,
+              joinedDate: serverMember.joinedDate,
+            }
+          : customer;
+      });
+      const knownEmails = new Set(
+        mergedRemote.map((customer) => customer.email.trim().toLowerCase()),
+      );
+      const localMembers: CustomerMember[] = getLocalCompanyMembers(
+        activeCompanyId,
+        activeCompanyName,
+      )
         .map((member) => {
           const email = member.email || member.memberId;
           const displayName = member.name || email;
@@ -133,7 +179,23 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           };
         })
         .filter((member) => !knownEmails.has(member.email.trim().toLowerCase()));
-      setCustomers([...remoteCustomers, ...localMembers]);
+      const serverOnlyMembers = supabaseMembers.filter(
+        (member) => !knownEmails.has(member.email.trim().toLowerCase()),
+      );
+      setCustomers([...mergedRemote, ...serverOnlyMembers, ...localMembers]);
+    };
+    const refreshSupabaseMembers = async () => {
+      if (!profile?.uid) return;
+      try {
+        const members = await fetchCreatorCommunityMembers(profile.uid, activeCompanyId);
+        supabaseMembers = members.map(mapSupabaseMember);
+        refreshCustomers();
+      } catch (error) {
+        console.error("Impossible de charger les membres créateur depuis Supabase:", error);
+        setToast(
+          error instanceof Error ? error.message : "Impossible de charger les membres Supabase.",
+        );
+      }
     };
     const unsub = subscribeToCreatorCustomers(
       creatorKey,
@@ -177,9 +239,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     window.addEventListener(LOCAL_COMPANY_MEMBERS_EVENT, handleLocalMembersUpdated);
     window.addEventListener("storage", handleStorage);
     refreshCustomers();
+    void refreshSupabaseMembers();
+    const refreshInterval = window.setInterval(() => void refreshSupabaseMembers(), 15000);
 
     return () => {
       unsub();
+      window.clearInterval(refreshInterval);
       window.removeEventListener(LOCAL_COMPANY_MEMBERS_EVENT, handleLocalMembersUpdated);
       window.removeEventListener("storage", handleStorage);
     };

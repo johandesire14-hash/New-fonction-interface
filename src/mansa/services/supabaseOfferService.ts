@@ -92,6 +92,7 @@ export const mapOfferRowToBusinessProject = (
   digitalFiles: any[] = [],
   courseModules: any[] = [],
   communityCurrency?: string,
+  activeUsers: number = 0,
 ): BusinessProject => {
   const isFree = row.pricing_type === "free" || row.price_amount === 0;
   return {
@@ -113,7 +114,7 @@ export const mapOfferRowToBusinessProject = (
     techStack: ["Mansa Engine Supabase", "Storage Sécurisé"],
     estimatedMonthlyRevenue: 0,
     affiliateCommissionRate: 25,
-    membersCount: 0,
+    membersCount: activeUsers,
     conversionRate: "0%",
     apps: Array.isArray(row.included_apps) ? row.included_apps : [],
     storeUrl: `mansa.af/p/${row.id}`,
@@ -237,12 +238,17 @@ export async function fetchCompanyOffersFromSupabase(
         };
       });
 
-      return mapOfferRowToPlatformOffer(row, "", {
-        telegramChannels,
-        discordChannels,
-        ebooks,
-        courses,
-      }, communityCurrency);
+      return mapOfferRowToPlatformOffer(
+        row,
+        "",
+        {
+          telegramChannels,
+          discordChannels,
+          ebooks,
+          courses,
+        },
+        communityCurrency,
+      );
     }),
   );
 
@@ -286,6 +292,33 @@ export async function fetchCreatorOffersFromSupabase(
       }
     }),
   );
+
+  const offerIds = offersData.map((row) => row.id).filter(Boolean);
+  const activeMembersByOffer = new Map<string, Set<string>>();
+  if (offerIds.length > 0) {
+    const { data: entitlementData, error: entitlementError } = await supabase
+      .from("member_entitlements")
+      .select("*")
+      .in("offer_id", offerIds);
+    if (entitlementError) {
+      console.error("Erreur lecture compteurs d'utilisateurs actifs Supabase:", entitlementError);
+    }
+
+    for (const entitlement of entitlementData || []) {
+      if (!["free", "paid", "trial"].includes(String(entitlement.status))) continue;
+      const expiry =
+        entitlement.expires_at ||
+        entitlement.expiresAt ||
+        entitlement.valid_until ||
+        entitlement.ends_at ||
+        entitlement.trial_ends_at;
+      if (expiry && new Date(expiry).getTime() <= Date.now()) continue;
+      if (!activeMembersByOffer.has(entitlement.offer_id)) {
+        activeMembersByOffer.set(entitlement.offer_id, new Set<string>());
+      }
+      activeMembersByOffer.get(entitlement.offer_id)?.add(entitlement.member_id);
+    }
+  }
 
   const projects = await Promise.all(
     offersData.map(async (row) => {
@@ -331,6 +364,7 @@ export async function fetchCreatorOffersFromSupabase(
         digitalFiles,
         courseModules,
         communityCurrencies.get(row.company_id),
+        activeMembersByOffer.get(offerId)?.size || 0,
       );
     }),
   );
@@ -375,9 +409,10 @@ export async function upsertOfferToSupabase(input: {
   const community = await fetchCommunityById(input.companyId);
   const offerCurrency = community?.primaryCurrency || input.currency || "XOF";
 
-  const offerId = input.id && !input.id.startsWith("proj-temp-")
-    ? input.id
-    : "offer-" + Math.random().toString(36).substring(2, 9);
+  const offerId =
+    input.id && !input.id.startsWith("proj-temp-")
+      ? input.id
+      : "offer-" + Math.random().toString(36).substring(2, 9);
 
   const isFree = input.pricingType === "free" || input.priceAmount === 0;
 
@@ -451,7 +486,8 @@ export async function upsertOfferToSupabase(input: {
         file.storageKey ||
         `${creatorUid}/${offerId}/${file.name?.replace(/[^a-zA-Z0-9._-]/g, "_") || `file_${idx}`}`;
 
-      const fileName = String(file.name || file.title || `Fichier ${idx + 1}`).trim() || `Fichier ${idx + 1}`;
+      const fileName =
+        String(file.name || file.title || `Fichier ${idx + 1}`).trim() || `Fichier ${idx + 1}`;
       const fileSize = typeof file.size === "number" && Number.isFinite(file.size) ? file.size : 0;
       const filePayload = {
         offer_id: offerId,
@@ -467,12 +503,23 @@ export async function upsertOfferToSupabase(input: {
         sort_order: idx,
       };
 
-      if (typeof file.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(file.id)) {
-        const { error } = await supabase.from("offer_files").upsert({ id: file.id, ...filePayload });
-        if (error) throw new Error(`offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`);
+      if (
+        typeof file.id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(file.id)
+      ) {
+        const { error } = await supabase
+          .from("offer_files")
+          .upsert({ id: file.id, ...filePayload });
+        if (error)
+          throw new Error(
+            `offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`,
+          );
       } else {
         const { error } = await supabase.from("offer_files").insert(filePayload);
-        if (error) throw new Error(`offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`);
+        if (error)
+          throw new Error(
+            `offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`,
+          );
       }
     }
   }
@@ -728,11 +775,7 @@ export async function fetchMemberEntitlements(memberId: string): Promise<MemberE
 
   return (data as MemberEntitlementRow[]).filter((item) => {
     const expiry =
-      item.expires_at ||
-      item.expiresAt ||
-      item.valid_until ||
-      item.ends_at ||
-      item.trial_ends_at;
+      item.expires_at || item.expiresAt || item.valid_until || item.ends_at || item.trial_ends_at;
     return !expiry || new Date(expiry).getTime() > Date.now();
   });
 }

@@ -37,10 +37,7 @@ import {
   claimFreeOfferRpc,
 } from "./supabaseOfferService";
 import { joinCommunityRpc } from "./supabaseCommunityService";
-import {
-  fetchUserProfile,
-  updateUserProfileInSupabase,
-} from "./supabaseProfileService";
+import { fetchUserProfile, updateUserProfileInSupabase } from "./supabaseProfileService";
 
 export interface AccountPaymentMethodConfig {
   dialCode?: string;
@@ -699,6 +696,8 @@ export function subscribeToCreatorProducts(
 
   emit();
 
+  const refreshInterval = setInterval(emit, 15000);
+
   if (typeof window !== "undefined") {
     window.addEventListener(PRODUCTS_UPDATED_EVENT, emit);
     window.addEventListener("mansa_discoverable_products_updated", emit);
@@ -706,6 +705,7 @@ export function subscribeToCreatorProducts(
 
   return () => {
     active = false;
+    clearInterval(refreshInterval);
     if (typeof window !== "undefined") {
       window.removeEventListener(PRODUCTS_UPDATED_EVENT, emit);
       window.removeEventListener("mansa_discoverable_products_updated", emit);
