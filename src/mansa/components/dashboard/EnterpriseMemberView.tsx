@@ -789,6 +789,12 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
     setIsMobileSidebarOpen(previousView.isMobileSidebarOpen);
     setIsMobileCompanyNavOpen(previousView.isMobileCompanyNavOpen);
   };
+  const handleConnectedAppBack = () => {
+    setActiveTab("accueil");
+    setCompanyTab("accueil");
+    setIsMobileCompanyNavOpen(true);
+    setIsMobileSidebarOpen(false);
+  };
   const optionsMenuRef = React.useRef<HTMLDivElement>(null);
 
   const commentReplies: Record<string, Array<{ author: string; text: string; time: string }>> = {
@@ -3424,10 +3430,8 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
             }
             onSendMessage={(_, text) => handleSendSupport(text)}
             onBack={() => {
-              setActiveTab("accueil");
-              setCompanyTab("accueil");
-              setIsMobileCompanyNavOpen(true);
-              setIsMobileSidebarOpen(false);
+              setIsSupportConversationOpen(false);
+              handleConnectedAppBack();
             }}
             safeArea
           />
@@ -3450,7 +3454,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                     priceDisplay: offer.priceDisplay,
                     subscribersCount: offer.subscribersCount || 0,
                   }))}
-                  onBackToDashboard={() => setActiveTab("accueil")}
+                  onBackToDashboard={handleConnectedAppBack}
                 />
               ) : (
                 <div className="max-w-3xl mx-auto w-full space-y-4">
@@ -3610,7 +3614,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                     priceDisplay: offer.priceDisplay,
                     subscribersCount: offer.subscribersCount || 0,
                   }))}
-                  onBackToDashboard={() => setActiveTab("accueil")}
+                  onBackToDashboard={handleConnectedAppBack}
                 />
               ) : (
                 <div className="max-w-3xl mx-auto w-full space-y-4">
