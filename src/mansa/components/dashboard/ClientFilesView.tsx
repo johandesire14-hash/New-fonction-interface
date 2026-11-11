@@ -56,7 +56,7 @@ export const ClientFilesView: React.FC<ClientFilesViewProps> = ({
     () =>
       files.filter((file) => {
         const text =
-          `${file.title || ""} ${file.description || ""} ${file.type || ""}`.toLowerCase();
+          `${file.name || ""} ${file.title || ""} ${file.description || ""} ${file.type || file.mime_type || ""}`.toLowerCase();
         const matchesQuery = text.includes(query.toLowerCase());
         const isPdf = text.includes("pdf") || text.includes("ebook");
         return (
@@ -170,11 +170,11 @@ export const ClientFilesView: React.FC<ClientFilesViewProps> = ({
                         {file.description || "Ressource incluse dans votre accès."}
                       </p>
                       <div className="mt-4 flex items-center gap-2 text-[11px] text-zinc-500">
-                        <span>{file.type || "Document"}</span>
-                        {file.fileSize && (
+                        <span>{file.type || file.mime_type || "Document"}</span>
+                        {(file.fileSize || file.file_size) && (
                           <>
                             <span>·</span>
-                            <span>{file.fileSize}</span>
+                            <span>{file.fileSize || `${Math.round((file.file_size || 0) / 1024)} KB`}</span>
                           </>
                         )}
                       </div>

@@ -188,7 +188,12 @@ export async function fetchCompanyOffersFromSupabase(
 
       const ebooks: EbookResourceItem[] = (filesData || []).map((f) => ({
         id: f.id,
-        title: f.title || f.name,
+        name: f.name || f.title || "Fichier sans nom",
+        title: f.name || f.title || "Fichier sans nom",
+        mime_type: f.mime_type || "application/octet-stream",
+        file_size: typeof f.file_size === "number" ? f.file_size : undefined,
+        fileSize: f.file_size ? `${Math.round(f.file_size / 1024)} KB` : undefined,
+        storageKey: f.storage_path || undefined,
         downloadUrl: f.download_url || "",
         description: f.description || "",
         coverImage: "",

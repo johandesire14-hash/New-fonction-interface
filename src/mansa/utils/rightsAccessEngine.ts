@@ -18,7 +18,9 @@ interface DigitalFileReference {
   name?: string;
   title?: string;
   size?: string;
+  file_size?: number;
   type?: string;
+  mime_type?: string;
   description?: string;
   downloadUrl?: string;
   storageKey?: string;
@@ -931,13 +933,15 @@ export function getMemberAuthorizedEbooks(
   const authorizedOffers = getMemberAuthorizedOffers(companyId, unlockedOfferIds, additionalOffers);
   const ebooks: EbookResourceItem[] = [];
   const seen = new Set<string>();
+  const seenStorageKeys = new Set<string>();
 
   for (const offer of authorizedOffers) {
     if (offer.ebooks && Array.isArray(offer.ebooks)) {
       for (const eb of offer.ebooks as DownloadableEbookResource[]) {
         if (!eb.storageKey && !eb.downloadUrl) continue;
-        if (!seen.has(eb.id)) {
+        if (!seen.has(eb.id) && (!eb.storageKey || !seenStorageKeys.has(eb.storageKey))) {
           seen.add(eb.id);
+          if (eb.storageKey) seenStorageKeys.add(eb.storageKey);
           ebooks.push(eb);
         }
       }
@@ -948,18 +952,24 @@ export function getMemberAuthorizedEbooks(
         if (!file?.id || (!file.storageKey && !file.downloadUrl)) continue;
         const ebook = {
           id: file.id,
-          title: file.title || file.name || "Fichier sans nom",
-          description: file.description || file.type || "Fichier téléchargeable",
+          title: file.name || file.title || "Fichier sans nom",
+          name: file.name || file.title || "Fichier sans nom",
+          description: file.description || file.type || file.mime_type || "Fichier téléchargeable",
+          mime_type: file.mime_type || file.type || "application/octet-stream",
           downloadUrl: file.downloadUrl,
           storageKey: file.storageKey,
           fileId: file.id,
-          fileSize: file.size,
+          file_size: file.file_size,
+          fileSize: file.size || (typeof file.file_size === "number" ? `${Math.round(file.file_size / 1024)} KB` : undefined),
           associatedOfferId: offer.id,
           associatedOfferTitle: offer.title,
         };
-        const existingIndex = ebooks.findIndex((item) => item.id === ebook.id);
+        const existingIndex = ebooks.findIndex(
+          (item) => item.id === ebook.id || (!!item.storageKey && item.storageKey === ebook.storageKey),
+        );
         if (existingIndex < 0) {
           seen.add(ebook.id);
+          if (ebook.storageKey) seenStorageKeys.add(ebook.storageKey);
           ebooks.push(ebook);
         } else {
           ebooks[existingIndex] = { ...ebooks[existingIndex], ...ebook };

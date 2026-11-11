@@ -193,8 +193,12 @@ export interface DiscordChannelItem {
 
 export interface EbookResourceItem {
   id: string;
+  name?: string;
   title: string;
   description?: string;
+  mime_type?: string;
+  file_size?: number;
+  storageKey?: string;
   downloadUrl?: string;
   fileSize?: string;
   pagesCount?: number;

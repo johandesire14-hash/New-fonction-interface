@@ -102,7 +102,7 @@ const loadWorkspaceFiles = async (productIds: string[]): Promise<FileItem[]> => 
   (data || []).forEach((row: any) => {
     const current = byId.get(row.id);
     byId.set(row.id, {
-      id: row.id, name: row.title || row.name || "Fichier sans nom", size: row.file_size ? formatSize(row.file_size) : "Taille inconnue", sizeBytes: typeof row.file_size === "number" ? row.file_size : undefined,
+      id: row.id, name: row.name || row.title || "Fichier sans nom", size: row.file_size ? formatSize(row.file_size) : "Taille inconnue", sizeBytes: typeof row.file_size === "number" ? row.file_size : undefined,
       type: row.mime_type || "application/octet-stream", productIds: Array.from(new Set([...(current?.productIds || []), row.offer_id])),
       storageKey: row.storage_path, updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
     });

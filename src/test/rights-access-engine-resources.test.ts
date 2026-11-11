@@ -170,6 +170,31 @@ describe("source unifiée des offres et droits aux ressources", () => {
       }).isAuthorized,
     ).toBe(true);
     expect(getMemberAuthorizedCourses(companyId, [offerB])).toEqual([course]);
-    expect(getMemberAuthorizedCourses(companyId, [])).toEqual([]);
+    expect(getMemberAuthorizedEbooks(companyId, [])).toEqual([]);
+  });
+
+  it("conserve un fichier Storage sans download_url et ne le duplique pas entre offres", () => {
+    const file = {
+      id: "file-shared-storage",
+      name: "IMG_3706.png",
+      title: "IMG_3",
+      mime_type: "image/png",
+      file_size: 2048,
+      storageKey: "creator-1/offer-a/IMG_3706.png",
+      downloadUrl: "",
+    };
+    saveOffers([
+      { id: offerA, companyId, companyName: "Entreprise test", title: "Offre A", ebooks: [file] },
+      { id: offerB, companyId, companyName: "Entreprise test", title: "Offre B", ebooks: [{ ...file, id: "file-shared-storage-copy" }] },
+    ]);
+
+    const authorized = getMemberAuthorizedEbooks(companyId, [offerA, offerB]);
+    expect(authorized).toHaveLength(1);
+    expect(authorized[0]).toMatchObject({
+      storageKey: file.storageKey,
+      name: file.name,
+      mime_type: file.mime_type,
+      file_size: file.file_size,
+    });
   });
 });
