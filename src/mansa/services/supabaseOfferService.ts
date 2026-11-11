@@ -28,6 +28,17 @@ export interface OfferRow {
   updated_at?: string;
 }
 
+export interface MemberEntitlementRow {
+  offer_id: string;
+  status: "free" | "paid" | "trial" | string;
+  expires_at?: string | null;
+  expiresAt?: string | null;
+  valid_until?: string | null;
+  ends_at?: string | null;
+  trial_ends_at?: string | null;
+  company_id?: string | null;
+}
+
 export const mapOfferRowToPlatformOffer = (
   row: OfferRow,
   companyName: string = "",
@@ -134,10 +145,11 @@ export async function fetchCompanyOffersFromSupabase(
     ascending: false,
   });
 
-  if (offersError || !offersData) {
-    console.warn("Notice: fetchCompanyOffersFromSupabase:", offersError?.message);
-    return [];
+  if (offersError) {
+    console.error("Erreur lecture offres Supabase:", offersError);
+    throw new Error(`Impossible de charger les offres Supabase : ${offersError.message}`);
   }
+  if (!offersData) throw new Error("Supabase n’a renvoyé aucune donnée pour les offres.");
 
   const community = await fetchCommunityById(companyId);
   const communityCurrency = community?.primaryCurrency;
@@ -696,12 +708,31 @@ export async function claimFreeOfferRpc(offerId: string): Promise<void> {
  */
 export async function fetchMemberUnlockedOfferIds(memberId: string): Promise<string[]> {
   if (!memberId) return [];
+  const entitlements = await fetchMemberEntitlements(memberId);
+  return entitlements.map((item) => item.offer_id);
+}
+
+export async function fetchMemberEntitlements(memberId: string): Promise<MemberEntitlementRow[]> {
+  if (!memberId) return [];
   const { data, error } = await supabase
     .from("member_entitlements")
-    .select("offer_id, status")
+    .select("*")
     .eq("member_id", memberId)
     .in("status", ["free", "paid", "trial"]);
 
-  if (error || !data) return [];
-  return data.map((item) => item.offer_id);
+  if (error) {
+    console.error("Erreur lecture entitlements membre Supabase:", error);
+    throw new Error(`Impossible de charger vos accès Supabase : ${error.message}`);
+  }
+  if (!data) throw new Error("Supabase n’a renvoyé aucune donnée pour vos accès.");
+
+  return (data as MemberEntitlementRow[]).filter((item) => {
+    const expiry =
+      item.expires_at ||
+      item.expiresAt ||
+      item.valid_until ||
+      item.ends_at ||
+      item.trial_ends_at;
+    return !expiry || new Date(expiry).getTime() > Date.now();
+  });
 }

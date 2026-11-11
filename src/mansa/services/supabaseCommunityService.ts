@@ -112,6 +112,21 @@ export async function fetchCommunityById(communityId: string): Promise<Company |
   return mapCommunityRowToCompany(data);
 }
 
+export async function fetchCommunityByIdStrict(communityId: string): Promise<Company> {
+  if (!communityId) throw new Error("Identifiant de communauté manquant.");
+  const { data, error } = await supabase
+    .from("communities")
+    .select("*")
+    .eq("id", communityId)
+    .maybeSingle();
+  if (error) {
+    console.error("Erreur lecture communauté membre Supabase:", error);
+    throw new Error(`Impossible de charger la communauté Supabase : ${error.message}`);
+  }
+  if (!data) throw new Error(`La communauté ${communityId} est introuvable dans Supabase.`);
+  return mapCommunityRowToCompany(data);
+}
+
 export async function saveCommunityToSupabase(company: Company): Promise<Company> {
   const {
     data: { user },
@@ -168,7 +183,11 @@ export async function fetchMemberCommunities(memberId: string): Promise<string[]
     .select("community_id")
     .eq("member_id", memberId);
 
-  if (error || !data) return [];
+  if (error) {
+    console.error("Erreur lecture communautés membre Supabase:", error);
+    throw new Error(`Impossible de charger vos communautés Supabase : ${error.message}`);
+  }
+  if (!data) throw new Error("Supabase n’a renvoyé aucune communauté membre.");
   return data.map((item) => item.community_id);
 }
 

@@ -314,6 +314,8 @@ export interface EnterpriseSubscription {
   ebooks?: EbookResourceItem[];
   courses?: CourseResourceItem[];
   customResources?: PrivateResourceItem[];
+  digitalFiles?: unknown[];
+  courseModules?: unknown[];
   supportChannels?: {
     telegramSupport?: string;
     email?: string;

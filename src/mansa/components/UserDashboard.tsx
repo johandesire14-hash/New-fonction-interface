@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Search,
   Compass,
@@ -145,6 +145,7 @@ const EnterpriseMemberView = React.lazy(() =>
 );
 import { ContextualLocationPrompt } from "./common/ContextualLocationPrompt";
 import { getSavedSubscriptions, saveSubscriptions } from "../utils/subscriptionsStorage";
+import { fetchMemberAccessFromSupabase } from "../services/supabaseMemberAccessService";
 import {
   subscribeToCreatorProducts,
   saveProductToFirestore,
@@ -723,7 +724,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const [selectedCommunitySubId, setSelectedCommunitySubId] = useState<string | null>(null);
   const [previewCommunitySubId, setPreviewCommunitySubId] = useState<string | null>(null);
 
-  const { profile, deleteAccount } = useAuth();
+  const { profile, deleteAccount, loading: authLoading } = useAuth();
 
   // State for AI Projects / Businesses backed by real Firestore database
   const [projects, setProjects] = useState<BusinessProject[]>([]);
@@ -813,6 +814,37 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     const userKey = user?.uid || user?.email || "default";
     return getSavedSubscriptions(userKey);
   });
+  const [memberAccessError, setMemberAccessError] = useState<string | null>(null);
+
+  // Le cache mémoire accélère le premier rendu, mais Supabase reste la source de vérité.
+  const refreshMemberAccess = useCallback(async () => {
+    const memberUid = user?.uid;
+    if (authLoading || !memberUid) return;
+
+    try {
+      const snapshot = await fetchMemberAccessFromSupabase(memberUid);
+      const userKey = user?.uid || user?.email || "default";
+      setMemberSubscriptions(snapshot.subscriptions);
+      saveSubscriptions(userKey, snapshot.subscriptions);
+      setMemberAccessError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("Impossible de reconstruire l’accès membre depuis Supabase:", error);
+      // Une erreur de lecture ne doit pas remplacer l’écran par un état vide.
+      setMemberAccessError(message);
+    }
+  }, [authLoading, user?.uid, user?.email]);
+
+  useEffect(() => {
+    void refreshMemberAccess();
+  }, [refreshMemberAccess]);
+
+  useEffect(() => {
+    const handleMemberAccessRefresh = () => void refreshMemberAccess();
+    window.addEventListener("mansa_member_access_refresh_requested", handleMemberAccessRefresh);
+    return () =>
+      window.removeEventListener("mansa_member_access_refresh_requested", handleMemberAccessRefresh);
+  }, [refreshMemberAccess]);
 
   useEffect(() => {
     const memberUid = user?.uid;
@@ -1699,6 +1731,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
   return (
     <div className="mansa-dashboard mansa-viewport mansa-safe-bottom flex h-screen w-full flex-col bg-[#0f1012] text-[#eeeeee] font-sans antialiased overflow-hidden selection:bg-[#FA4616]/30 selection:text-[#FA4616]">
+      {memberAccessError && (
+        <div className="absolute left-1/2 top-16 z-50 w-[min(92vw,720px)] -translate-x-1/2 rounded-xl border border-red-400/30 bg-red-950/90 px-4 py-3 text-sm text-red-100 shadow-xl" role="alert">
+          Impossible de recharger vos accès membre depuis Supabase : {memberAccessError}
+        </div>
+      )}
       {/* 1. TOP HEADER BAR (Fully Responsive) */}
       <header
         className={`${isMemberWorkspace || activeNav === "communaute" ? "hidden lg:flex" : "flex"} h-14 w-full shrink-0 items-center justify-between border-b border-white/[0.07] bg-[#0c0d0e] px-2.5 sm:px-6 gap-2 select-none`}

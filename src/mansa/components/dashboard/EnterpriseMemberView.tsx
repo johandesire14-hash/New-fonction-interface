@@ -4042,6 +4042,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
             saveSubscription(userKey, updatedSubscription);
             setCurrentSub(updatedSubscription);
             setCheckoutModalOffer(null);
+            window.dispatchEvent(new Event("mansa_member_access_refresh_requested"));
           }}
           user={user}
         />
