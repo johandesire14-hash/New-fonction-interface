@@ -763,9 +763,19 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
   const [isEbookModalOpen, setIsEbookModalOpen] = useState(false);
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseResourceItem | null>(null);
-  const resourceReturnViewRef = React.useRef({ activeTab, companyTab });
+  const resourceReturnViewRef = React.useRef({
+    activeTab,
+    companyTab,
+    isMobileSidebarOpen,
+    isMobileCompanyNavOpen,
+  });
   const openResourceModal = (resource: "files" | "courses") => {
-    resourceReturnViewRef.current = { activeTab, companyTab };
+    resourceReturnViewRef.current = {
+      activeTab,
+      companyTab,
+      isMobileSidebarOpen,
+      isMobileCompanyNavOpen,
+    };
     if (resource === "courses") setIsCourseModalOpen(true);
     else setIsEbookModalOpen(true);
   };
@@ -773,8 +783,11 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
     const previousView = resourceReturnViewRef.current;
     setIsEbookModalOpen(false);
     setIsCourseModalOpen(false);
+    setSelectedCourse(null);
     setActiveTab(previousView.activeTab);
     setCompanyTab(previousView.companyTab);
+    setIsMobileSidebarOpen(previousView.isMobileSidebarOpen);
+    setIsMobileCompanyNavOpen(previousView.isMobileCompanyNavOpen);
   };
   const optionsMenuRef = React.useRef<HTMLDivElement>(null);
 
