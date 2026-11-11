@@ -91,11 +91,13 @@ export async function fetchCreatorCommunityMembers(
 
   const { data: memberRows, error: memberError } = await supabase
     .from("community_members")
-    .select("member_id, community_id, joined_at, created_at")
+    .select("member_id, community_id, joined_at")
     .eq("community_id", communityId);
   if (memberError) throwReadError("les membres de la communauté", memberError);
 
-  const rows = (memberRows || []) as CommunityMemberRow[];
+  const rows = (memberRows || []).filter(
+    (row) => row.member_id !== creatorId,
+  ) as CommunityMemberRow[];
   if (rows.length === 0) return [];
 
   const memberIds = [...new Set(rows.map((row) => row.member_id).filter(Boolean))];
@@ -171,15 +173,13 @@ export async function fetchCreatorOfferActiveUserCounts(
 
   const { data: entitlements, error: entitlementError } = await supabase
     .from("member_entitlements")
-    .select(
-      "member_id, offer_id, status, expires_at, expiresAt, valid_until, ends_at, trial_ends_at",
-    )
+    .select("member_id, offer_id, status, expires_at")
     .in("offer_id", offerIds);
   if (entitlementError) throwReadError("les droits des offres", entitlementError);
 
   const membersByOffer = new Map<string, Set<string>>();
   for (const entitlement of (entitlements || []) as EntitlementRow[]) {
-    if (!isActiveEntitlement(entitlement)) continue;
+    if (!isActiveEntitlement(entitlement) || entitlement.member_id === creatorId) continue;
     if (!membersByOffer.has(entitlement.offer_id)) {
       membersByOffer.set(entitlement.offer_id, new Set<string>());
     }
