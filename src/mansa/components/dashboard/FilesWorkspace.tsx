@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, FileText, Pencil, Plus, Replace, Trash2, Upload, X } from "lucide-react";
 import { supabase } from "../../services/supabase";
 import { uploadOfferFile, deleteOfferFile } from "../../services/supabaseStorageService";
-import { getUserFacingErrorMessage } from "../../utils/userFacingError";
 
 
 interface FilesWorkspaceProps {
@@ -38,6 +37,7 @@ type FileItem = {
   id: string;
   name: string;
   size: string;
+  sizeBytes?: number;
   type: string;
   productIds: string[];
   storageKey?: string | undefined;
@@ -102,7 +102,7 @@ const loadWorkspaceFiles = async (productIds: string[]): Promise<FileItem[]> => 
   (data || []).forEach((row: any) => {
     const current = byId.get(row.id);
     byId.set(row.id, {
-      id: row.id, name: row.title || row.name || "Fichier sans nom", size: row.file_size ? formatSize(row.file_size) : "Taille inconnue",
+      id: row.id, name: row.title || row.name || "Fichier sans nom", size: row.file_size ? formatSize(row.file_size) : "Taille inconnue", sizeBytes: typeof row.file_size === "number" ? row.file_size : undefined,
       type: row.mime_type || "application/octet-stream", productIds: Array.from(new Set([...(current?.productIds || []), row.offer_id])),
       storageKey: row.storage_path, updatedAt: row.updated_at || row.created_at || new Date().toISOString(),
     });
@@ -128,7 +128,7 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    void loadWorkspaceFiles(productIds).then((loaded) => { if (!cancelled) setFiles(loaded); }).catch((error) => { if (!cancelled) setSaveError(error instanceof Error ? error.message : String(error)); });
+    void loadWorkspaceFiles(productIds).then((loaded) => { if (!cancelled) setFiles(loaded); }).catch((error) => { if (!cancelled) setSaveError(`La relecture des fichiers a échoué.\n${formatSupabaseError(error)}`); });
     return () => { cancelled = true; };
   }, [productIds]);
 
@@ -143,11 +143,42 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
     [productIds, products],
   );
 
+  const formatSupabaseError = (error: unknown): string => {
+    if (!error || typeof error !== "object") return String(error || "Erreur inconnue");
+    const value = error as Record<string, unknown>;
+    const details = [
+      ["message", value.message],
+      ["code", value.code],
+      ["details", value.details],
+      ["hint", value.hint],
+    ]
+      .filter(([, item]) => item !== undefined && item !== null && String(item).trim())
+      .map(([label, item]) => `${label}: ${String(item)}`);
+    return details.length ? details.join("\n") : JSON.stringify(error);
+  };
+
   const persistFiles = async (nextFiles: FileItem[]) => {
     const scoped = nextFiles.filter((file) => file.productIds.some((id) => productIds.includes(id)));
     const { error: removeError } = await supabase.from("offer_files").delete().in("offer_id", productIds);
     if (removeError) throw removeError;
-    const rows = scoped.flatMap((file) => productIds.filter((offerId) => file.productIds.includes(offerId)).map((offerId) => ({ id: file.id, offer_id: offerId, title: file.name, storage_path: file.storageKey, file_size: Number.parseInt(file.size) || null, mime_type: file.type })));
+    const rows = scoped.flatMap((file, fileIndex) =>
+      productIds
+        .filter((offerId) => file.productIds.includes(offerId))
+        .map((offerId, offerIndex) => ({
+          id: crypto.randomUUID(),
+          offer_id: offerId,
+          name: file.name.trim() || `Fichier ${fileIndex + 1}`,
+          title: file.name.trim() || `Fichier ${fileIndex + 1}`,
+          description: "",
+          mime_type: file.type || "application/octet-stream",
+          file_size: Number.isFinite(file.sizeBytes) ? file.sizeBytes : 0,
+          storage_bucket: "offer-files",
+          storage_path: file.storageKey || "",
+          download_url: null,
+          is_free_preview: false,
+          sort_order: fileIndex * productIds.length + offerIndex,
+        })),
+    );
     if (rows.length) { const { error } = await supabase.from("offer_files").insert(rows); if (error) throw error; }
   };
 
@@ -160,13 +191,16 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
     if (!selectedFile) return;
     setIsSaving(true);
     setSaveError(null);
-    const id = `file-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now()}`;
+    const id = crypto.randomUUID();
+    let uploadedStoragePath: string | undefined;
     try {
       const stored = await uploadOfferFile(creatorId, productIds[0], selectedFile, `${id}-${selectedFile.name}`);
+      uploadedStoragePath = stored.storagePath;
       const newFile: FileItem = {
         id,
         name: fileName.trim() || selectedFile.name,
         size: formatSize(selectedFile.size),
+        sizeBytes: selectedFile.size,
         type: selectedFile.type || "application/octet-stream",
         productIds: [...productIds],
         storageKey: stored.storagePath,
@@ -179,8 +213,9 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
       setSelectedFile(null);
       setScreen("library");
     } catch (error) {
+      if (uploadedStoragePath) await deleteOfferFile(uploadedStoragePath);
       console.error("File save failed:", error);
-      setSaveError(getUserFacingErrorMessage(error, "Le fichier n’a pas pu être enregistré. Réessayez."));
+      setSaveError(`Le fichier n’a pas pu être enregistré.\n${formatSupabaseError(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -207,6 +242,7 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
     }
     setIsSaving(true);
     setSaveError(null);
+    let replacementStoragePath: string | undefined;
     try {
       let updatedFile: FileItem = {
         ...editingFile,
@@ -216,10 +252,12 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
       if (editMode === "replace" && selectedFile) {
         const replacementAssetId = `${editingFile.id}-replacement-${Date.now()}`;
         const stored = await uploadOfferFile(creatorId, productIds[0], selectedFile, `${replacementAssetId}-${selectedFile.name}`);
+        replacementStoragePath = stored.storagePath;
         updatedFile = {
           ...updatedFile,
           name: fileName.trim() || selectedFile.name,
           size: formatSize(selectedFile.size),
+          sizeBytes: selectedFile.size,
           type: selectedFile.type || "application/octet-stream",
           storageKey: stored.storagePath,
           updatedAt: stored.updatedAt,
@@ -233,8 +271,9 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
       setFileName("");
       setScreen("library");
     } catch (error) {
+      if (replacementStoragePath) await deleteOfferFile(replacementStoragePath);
       console.error("File update failed:", error);
-      setSaveError(getUserFacingErrorMessage(error, "Les modifications n’ont pas pu être enregistrées. Réessayez."));
+      setSaveError(`Les modifications n’ont pas pu être enregistrées.\n${formatSupabaseError(error)}`);
     } finally {
       setIsSaving(false);
     }
@@ -260,7 +299,7 @@ export const FilesWorkspace: React.FC<FilesWorkspaceProps> = ({
         // Keep the failure visible if metadata rollback itself is unavailable.
       }
       console.error("File deletion failed:", error);
-      setSaveError(getUserFacingErrorMessage(error, "Le fichier n’a pas pu être supprimé. Réessayez."));
+      setSaveError(`Le fichier n’a pas pu être supprimé.\n${formatSupabaseError(error)}`);
     } finally {
       setIsSaving(false);
     }

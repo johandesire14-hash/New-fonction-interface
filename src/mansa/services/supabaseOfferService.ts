@@ -434,13 +434,15 @@ export async function upsertOfferToSupabase(input: {
         file.storageKey ||
         `${creatorUid}/${offerId}/${file.name?.replace(/[^a-zA-Z0-9._-]/g, "_") || `file_${idx}`}`;
 
+      const fileName = String(file.name || file.title || `Fichier ${idx + 1}`).trim() || `Fichier ${idx + 1}`;
+      const fileSize = typeof file.size === "number" && Number.isFinite(file.size) ? file.size : 0;
       const filePayload = {
         offer_id: offerId,
-        name: file.name || file.title || `Fichier ${idx + 1}`,
-        title: file.title || file.name || `Fichier ${idx + 1}`,
+        name: fileName,
+        title: String(file.title || fileName).trim() || fileName,
         description: file.description || "",
         mime_type: file.type || "application/octet-stream",
-        file_size: typeof file.size === "number" ? file.size : 0,
+        file_size: fileSize,
         storage_bucket: "offer-files",
         storage_path: storagePath,
         download_url: file.downloadUrl || null,
@@ -448,10 +450,12 @@ export async function upsertOfferToSupabase(input: {
         sort_order: idx,
       };
 
-      if (file.id && file.id.length === 36 && file.id.includes("-")) {
-        await supabase.from("offer_files").upsert({ id: file.id, ...filePayload });
+      if (typeof file.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(file.id)) {
+        const { error } = await supabase.from("offer_files").upsert({ id: file.id, ...filePayload });
+        if (error) throw new Error(`offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`);
       } else {
-        await supabase.from("offer_files").insert(filePayload);
+        const { error } = await supabase.from("offer_files").insert(filePayload);
+        if (error) throw new Error(`offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`);
       }
     }
   }

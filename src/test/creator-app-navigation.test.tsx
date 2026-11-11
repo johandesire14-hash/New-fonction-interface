@@ -284,9 +284,9 @@ describe("navigation catalogue Apps Store vers les workspaces créateur", () => 
     rejectUpload?.(new Error("stockage indisponible"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Le fichier n’a pas pu être enregistré. Réessayez.",
+      "Le fichier n’a pas pu être enregistré.",
     );
-    expect(screen.getByRole("alert")).not.toHaveTextContent("stockage indisponible");
+    expect(screen.getByRole("alert")).toHaveTextContent("message: stockage indisponible");
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Ajouter le fichier" })).toBeEnabled(),
     );
