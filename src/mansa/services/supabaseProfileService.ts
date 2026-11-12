@@ -41,6 +41,11 @@ export const mapProfileRowToUserProfile = (row: ProfileRow): FirestoreUserProfil
     storeTagline: settings.storeTagline,
     supportEmail: settings.supportEmail,
     storeCurrency: settings.storeCurrency || row.currency || "XOF",
+    showTotalEarned: settings.showTotalEarned !== false,
+    showLocation: settings.showLocation !== false,
+    showOwnedBusinesses: settings.showOwnedBusinesses !== false,
+    showOwnedWhops: settings.showOwnedWhops !== false,
+    showJoinedWhops: settings.showJoinedWhops !== false,
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   };
@@ -81,6 +86,11 @@ export async function updateUserProfileInSupabase(
     storeTagline: currentProfile.storeTagline,
     supportEmail: currentProfile.supportEmail,
     storeCurrency: currentProfile.storeCurrency,
+    showTotalEarned: currentProfile.showTotalEarned,
+    showLocation: currentProfile.showLocation,
+    showOwnedBusinesses: currentProfile.showOwnedBusinesses,
+    showOwnedWhops: currentProfile.showOwnedWhops,
+    showJoinedWhops: currentProfile.showJoinedWhops,
   } : {};
 
   payload.settings = {
@@ -89,6 +99,13 @@ export async function updateUserProfileInSupabase(
     ...(profile.storeTagline !== undefined ? { storeTagline: profile.storeTagline } : {}),
     ...(profile.supportEmail !== undefined ? { supportEmail: profile.supportEmail } : {}),
     ...(profile.storeCurrency !== undefined ? { storeCurrency: profile.storeCurrency } : {}),
+    ...(profile.showTotalEarned !== undefined ? { showTotalEarned: profile.showTotalEarned } : {}),
+    ...(profile.showLocation !== undefined ? { showLocation: profile.showLocation } : {}),
+    ...(profile.showOwnedBusinesses !== undefined
+      ? { showOwnedBusinesses: profile.showOwnedBusinesses }
+      : {}),
+    ...(profile.showOwnedWhops !== undefined ? { showOwnedWhops: profile.showOwnedWhops } : {}),
+    ...(profile.showJoinedWhops !== undefined ? { showJoinedWhops: profile.showJoinedWhops } : {}),
   };
 
   const { data, error } = await supabase

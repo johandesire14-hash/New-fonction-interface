@@ -108,6 +108,7 @@ const PartnersView = React.lazy(() =>
   import("./dashboard/PartnersView").then((m) => ({ default: m.PartnersView })),
 );
 import { AccountSettingsModal } from "./common/AccountSettingsModal";
+import { UserProfileView } from "./common/UserProfileView";
 import { TelegramIcon, DiscordIcon } from "./dashboard/ConnectedAppsView";
 const ConnectedAppsView = React.lazy(() =>
   import("./dashboard/ConnectedAppsView").then((m) => ({ default: m.ConnectedAppsView })),
@@ -1437,6 +1438,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   const [selectedPrivateConversationId, setSelectedPrivateConversationId] = useState<string | null>(
     null,
   );
+  const [viewedPrivateProfile, setViewedPrivateProfile] = useState<{
+    userId: string;
+    name?: string;
+    email?: string;
+  } | null>(null);
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [messageSortOrder, setMessageSortOrder] = useState<"recent" | "oldest">("recent");
   const [isTabLoading, setIsTabLoading] = useState(false);
@@ -3735,7 +3741,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               <button
                                 type="button"
                                 key={conversation.id}
-                                onClick={() => setSelectedPrivateConversationId(conversation.id)}
+                                onClick={() => {
+                                  setViewedPrivateProfile(null);
+                                  setSelectedPrivateConversationId(conversation.id);
+                                }}
                                 className={`flex w-full items-start gap-3 border-b border-white/[0.06] p-4 text-left ${selectedPrivateConversationId === conversation.id ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}
                               >
                                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#252830] text-xs font-bold text-white">
@@ -3771,6 +3780,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               Sélectionnez une conversation pour consulter le chat.
                             </div>
                           );
+                        if (viewedPrivateProfile) {
+                          return (
+                            <UserProfileView
+                              userId={viewedPrivateProfile.userId}
+                              fallbackName={viewedPrivateProfile.name}
+                              fallbackEmail={viewedPrivateProfile.email}
+                              onBack={() => setViewedPrivateProfile(null)}
+                            />
+                          );
+                        }
                         return (
                           <>
                             <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
@@ -3782,10 +3801,37 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               >
                                 <ArrowLeft className="size-4" />
                               </button>
-                              <div className="flex size-9 items-center justify-center rounded-full bg-[#252830] text-xs font-bold text-white">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewedPrivateProfile({
+                                    userId:
+                                      activeWorkspaceId === "personnel"
+                                        ? conversation.creator_id
+                                        : conversation.member_id,
+                                    name: conversation.memberName,
+                                    email: conversation.memberEmail,
+                                  })
+                                }
+                                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#252830] text-xs font-bold text-white hover:ring-2 hover:ring-emerald-400/50"
+                                aria-label="Ouvrir le profil"
+                              >
                                 {conversation.memberName?.[0]?.toUpperCase() || "M"}
-                              </div>
-                              <div>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewedPrivateProfile({
+                                    userId:
+                                      activeWorkspaceId === "personnel"
+                                        ? conversation.creator_id
+                                        : conversation.member_id,
+                                    name: conversation.memberName,
+                                    email: conversation.memberEmail,
+                                  })
+                                }
+                                className="min-w-0 text-left"
+                              >
                                 <div className="text-sm font-semibold text-white">
                                   {conversation.memberName}
                                 </div>
@@ -3794,7 +3840,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                     ? conversation.communityName || conversation.companyId
                                     : conversation.memberEmail}
                                 </div>
-                              </div>
+                              </button>
                             </div>
                             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
                               {conversation.messages.map((item: any) => {
