@@ -68,7 +68,8 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   }, [userId]);
 
   const displayName = profile?.displayName || fallbackName || fallbackEmail || "Utilisateur";
-  const handle = profile?.handle || (fallbackEmail ? `@${fallbackEmail.split("@")[0]}` : "");
+  const rawHandle = profile?.handle || (fallbackEmail ? fallbackEmail.split("@")[0] : displayName);
+  const handle = rawHandle ? (rawHandle.startsWith("@") ? rawHandle : `@${rawHandle}`) : "@utilisateur";
   const canShowEarned = profile?.showTotalEarned !== false;
   const canShowLocation = profile?.showLocation !== false;
   const canShowOwned = profile?.showOwnedBusinesses !== false && profile?.showOwnedWhops !== false;
@@ -104,7 +105,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 </div>
                 <div className="min-w-0">
                   <h1 className="truncate text-xl font-bold text-white">{displayName}</h1>
-                  <p className="truncate text-sm text-emerald-300">{handle}</p>
+                  <p className="truncate text-sm text-emerald-300">Nom d’utilisateur : {handle}</p>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-300">
                     {profile?.bio || "Aucune bio renseignée."}
                   </p>
