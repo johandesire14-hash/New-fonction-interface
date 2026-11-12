@@ -54,7 +54,7 @@ export async function fetchPrivateConversations(): Promise<PrivateConversation[]
   const [{ data: profiles }, { data: communities }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, email, avatar_url")
+      .select("id, display_name, handle, email, avatar_url")
       .in("id", participantIds),
     supabase.from("communities").select("id, name").in("id", communityIds),
   ]);
@@ -63,6 +63,7 @@ export async function fetchPrivateConversations(): Promise<PrivateConversation[]
       (profiles || []) as Array<{
         id: string;
         display_name?: string | null;
+        handle?: string | null;
         email?: string | null;
         avatar_url?: string | null;
       }>
@@ -94,8 +95,9 @@ export async function fetchPrivateConversations(): Promise<PrivateConversation[]
     return {
       ...row,
       messages: conversationMessages,
-      participantName: participant?.display_name || participant?.email || participantId,
-      participantUsername: participant?.email || participantId,
+      participantName:
+        participant?.display_name || participant?.handle?.replace(/^@/, "") || participant?.email || participantId,
+      participantUsername: participant?.handle || participant?.email || participantId,
       ...(participant?.avatar_url !== undefined
         ? { participantAvatarUrl: participant.avatar_url }
         : {}),

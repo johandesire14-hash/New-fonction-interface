@@ -3743,9 +3743,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                 </div>
                                 <div className="min-w-0">
                                   <div className="truncate text-xs font-semibold text-white">
-                                    {activeWorkspaceId === "personnel"
-                                      ? conversation.companyId
-                                      : conversation.memberName}
+                                    {conversation.memberName}
                                   </div>
                                   <div className="truncate text-[11px] text-zinc-500">
                                     {conversation.memberEmail}
@@ -3785,18 +3783,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                 <ArrowLeft className="size-4" />
                               </button>
                               <div className="flex size-9 items-center justify-center rounded-full bg-[#252830] text-xs font-bold text-white">
-                                {(activeWorkspaceId === "personnel"
-                                  ? conversation.companyId
-                                  : conversation.memberName)?.[0]?.toUpperCase() || "M"}
+                                {conversation.memberName?.[0]?.toUpperCase() || "M"}
                               </div>
                               <div>
                                 <div className="text-sm font-semibold text-white">
-                                  {activeWorkspaceId === "personnel"
-                                    ? conversation.companyId
-                                    : conversation.memberName}
+                                  {conversation.memberName}
                                 </div>
                                 <div className="text-[11px] text-zinc-500">
-                                  {conversation.memberEmail}
+                                  {activeWorkspaceId === "personnel"
+                                    ? conversation.communityName || conversation.companyId
+                                    : conversation.memberEmail}
                                 </div>
                               </div>
                             </div>
