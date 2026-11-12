@@ -81,17 +81,19 @@ export async function updateUserProfileInSupabase(
   if (profile.photoURL !== undefined) payload.avatar_url = profile.photoURL;
 
   const currentProfile = await fetchUserProfile(userId);
-  const currentSettings = currentProfile ? {
-    storeName: currentProfile.storeName,
-    storeTagline: currentProfile.storeTagline,
-    supportEmail: currentProfile.supportEmail,
-    storeCurrency: currentProfile.storeCurrency,
-    showTotalEarned: currentProfile.showTotalEarned,
-    showLocation: currentProfile.showLocation,
-    showOwnedBusinesses: currentProfile.showOwnedBusinesses,
-    showOwnedWhops: currentProfile.showOwnedWhops,
-    showJoinedWhops: currentProfile.showJoinedWhops,
-  } : {};
+  const currentSettings = currentProfile
+    ? {
+        storeName: currentProfile.storeName,
+        storeTagline: currentProfile.storeTagline,
+        supportEmail: currentProfile.supportEmail,
+        storeCurrency: currentProfile.storeCurrency,
+        showTotalEarned: currentProfile.showTotalEarned,
+        showLocation: currentProfile.showLocation,
+        showOwnedBusinesses: currentProfile.showOwnedBusinesses,
+        showOwnedWhops: currentProfile.showOwnedWhops,
+        showJoinedWhops: currentProfile.showJoinedWhops,
+      }
+    : {};
 
   payload.settings = {
     ...currentSettings,
@@ -116,7 +118,7 @@ export async function updateUserProfileInSupabase(
 
   if (error) {
     console.error("Erreur mise à jour profil Supabase:", error);
-    throw new Error("Impossible de mettre à jour le profil : " + error.message);
+    throw new Error("Impossible d’enregistrer ces modifications. Réessayez.");
   }
 
   return mapProfileRowToUserProfile(data);

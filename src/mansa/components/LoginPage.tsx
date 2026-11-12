@@ -55,10 +55,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       onLoginSuccess();
     } catch (err: any) {
       console.error("Auth error:", err);
-      const authMessage = typeof err?.message === "string" ? err.message.trim() : "";
       setLocalError(
-        authMessage ||
-          getUserFacingErrorMessage(err, "Connexion impossible. Vérifiez vos informations et réessayez."),
+        getUserFacingErrorMessage(
+          err,
+          "Connexion impossible. Vérifiez vos informations et réessayez.",
+        ),
       );
     } finally {
       setIsSubmitting(false);
@@ -77,7 +78,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       setSuccessMessage("Un lien de réinitialisation a été envoyé à votre adresse email.");
     } catch (err: any) {
       setLocalError(
-        getUserFacingErrorMessage(err, "Impossible d’envoyer le lien de réinitialisation. Réessayez."),
+        getUserFacingErrorMessage(
+          err,
+          "Impossible d’envoyer le lien de réinitialisation. Réessayez.",
+        ),
       );
     }
   };
@@ -148,7 +152,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         <div className="rounded-2xl border border-white/10 bg-[#15181b] p-6 sm:p-7 shadow-2xl space-y-4">
           {/* Error notice */}
           {(localError || error) && (
-            <div role="alert" className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs leading-relaxed">
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs leading-relaxed"
+            >
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <span>{localError || error}</span>
             </div>

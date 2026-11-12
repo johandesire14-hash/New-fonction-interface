@@ -111,7 +111,7 @@ export const mapOfferRowToBusinessProject = (
       "Paiement sécurisé Mobile Money & Carte",
       "Délivrance instantanée 24/7",
     ],
-    techStack: ["Mansa Engine Supabase", "Storage Sécurisé"],
+    techStack: ["Mansa Engine", "Fichiers sécurisés"],
     estimatedMonthlyRevenue: 0,
     affiliateCommissionRate: 25,
     membersCount: activeUsers,
@@ -148,9 +148,9 @@ export async function fetchCompanyOffersFromSupabase(
 
   if (offersError) {
     console.error("Erreur lecture offres Supabase:", offersError);
-    throw new Error(`Impossible de charger les offres Supabase : ${offersError.message}`);
+    throw new Error("Impossible de charger les offres. Réessayez.");
   }
-  if (!offersData) throw new Error("Supabase n’a renvoyé aucune donnée pour les offres.");
+  if (!offersData) throw new Error("Les offres ne sont pas disponibles pour le moment.");
 
   const community = await fetchCommunityById(companyId);
   const communityCurrency = community?.primaryCurrency;
@@ -439,7 +439,7 @@ export async function upsertOfferToSupabase(input: {
 
   if (offerError) {
     console.error("Erreur enregistrement offer Supabase:", offerError);
-    throw new Error("Impossible d'enregistrer le produit : " + offerError.message);
+    throw new Error("Impossible d’enregistrer ce contenu. Réessayez.");
   }
 
   // 2. Canaux Telegram
@@ -511,15 +511,11 @@ export async function upsertOfferToSupabase(input: {
           .from("offer_files")
           .upsert({ id: file.id, ...filePayload });
         if (error)
-          throw new Error(
-            `offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`,
-          );
+          throw new Error("Impossible d’enregistrer les fichiers liés à cette offre. Réessayez.");
       } else {
         const { error } = await supabase.from("offer_files").insert(filePayload);
         if (error)
-          throw new Error(
-            `offer_files (${error.code || "erreur"}): ${error.message}${error.details ? ` — ${error.details}` : ""}`,
-          );
+          throw new Error("Impossible d’enregistrer les fichiers liés à cette offre. Réessayez.");
       }
     }
   }
@@ -592,7 +588,8 @@ export async function saveCreatorCourseToOffer(input: {
     .eq("id", input.offerId)
     .maybeSingle();
 
-  if (offerReadError) throw new Error(`Impossible de vérifier l’offre : ${offerReadError.message}`);
+  if (offerReadError)
+    throw new Error("Impossible de vérifier cette offre pour le moment. Réessayez.");
   if (!offer) throw new Error("L’offre associée au cours est introuvable.");
   if (offer.creator_id !== session.user.id) {
     throw new Error("Vous n’êtes pas autorisé à modifier cette offre.");
@@ -605,7 +602,7 @@ export async function saveCreatorCourseToOffer(input: {
       .update({ included_apps: [...includedApps, "Cours & formations"] })
       .eq("id", input.offerId)
       .eq("creator_id", session.user.id);
-    if (error) throw new Error(`Impossible de publier l’application Cours : ${error.message}`);
+    if (error) throw new Error("Impossible de publier le cours pour le moment. Réessayez.");
   }
 
   let courseRowId = input.courseRowId;
@@ -616,7 +613,7 @@ export async function saveCreatorCourseToOffer(input: {
       .eq("id", courseRowId)
       .eq("offer_id", input.offerId)
       .maybeSingle();
-    if (error) throw new Error(`Impossible de vérifier le cours : ${error.message}`);
+    if (error) throw new Error("Impossible de vérifier le cours pour le moment. Réessayez.");
     if (!existingCourse) courseRowId = undefined;
   }
 
@@ -628,7 +625,7 @@ export async function saveCreatorCourseToOffer(input: {
       .eq("title", input.title)
       .limit(1)
       .maybeSingle();
-    if (error) throw new Error(`Impossible de rechercher le cours : ${error.message}`);
+    if (error) throw new Error("Impossible de rechercher le cours pour le moment. Réessayez.");
     courseRowId = matchingCourse?.id;
   }
 
@@ -638,25 +635,25 @@ export async function saveCreatorCourseToOffer(input: {
       .update({ title: input.title, description: input.description })
       .eq("id", courseRowId)
       .eq("offer_id", input.offerId);
-    if (error) throw new Error(`Impossible de mettre à jour le cours : ${error.message}`);
+    if (error) throw new Error("Impossible de mettre à jour le cours. Réessayez.");
   } else {
     const { data: createdCourse, error } = await supabase
       .from("offer_courses")
       .insert({ offer_id: input.offerId, title: input.title, description: input.description })
       .select("id")
       .single();
-    if (error) throw new Error(`Impossible d’enregistrer le cours : ${error.message}`);
+    if (error) throw new Error("Impossible d’enregistrer le cours. Réessayez.");
     courseRowId = createdCourse?.id;
   }
 
-  if (!courseRowId) throw new Error("Supabase n’a pas renvoyé l’identifiant du cours enregistré.");
+  if (!courseRowId) throw new Error("Le cours n’a pas pu être enregistré. Réessayez.");
 
   const { error: deleteModulesError } = await supabase
     .from("course_modules")
     .delete()
     .eq("course_id", courseRowId);
   if (deleteModulesError) {
-    throw new Error(`Impossible de mettre à jour les chapitres : ${deleteModulesError.message}`);
+    throw new Error("Impossible de mettre à jour les chapitres. Réessayez.");
   }
 
   const modulePayload = input.modules.map((module, index) => ({
@@ -668,7 +665,7 @@ export async function saveCreatorCourseToOffer(input: {
   }));
   if (modulePayload.length > 0) {
     const { error } = await supabase.from("course_modules").insert(modulePayload);
-    if (error) throw new Error(`Impossible d’enregistrer les chapitres : ${error.message}`);
+    if (error) throw new Error("Impossible d’enregistrer les chapitres. Réessayez.");
   }
 
   return courseRowId;
@@ -685,7 +682,8 @@ export async function deleteCreatorCourseFromOffer(input: {
     .select("id, creator_id")
     .eq("id", input.offerId)
     .maybeSingle();
-  if (offerReadError) throw new Error(`Impossible de vérifier l’offre : ${offerReadError.message}`);
+  if (offerReadError)
+    throw new Error("Impossible de vérifier cette offre pour le moment. Réessayez.");
   if (!offer || offer.creator_id !== session.user.id) {
     throw new Error("Vous n’êtes pas autorisé à modifier cette offre.");
   }
@@ -694,14 +692,14 @@ export async function deleteCreatorCourseFromOffer(input: {
     .from("course_modules")
     .delete()
     .eq("course_id", input.courseRowId);
-  if (moduleError) throw new Error(`Impossible de retirer les chapitres : ${moduleError.message}`);
+  if (moduleError) throw new Error("Impossible de retirer les chapitres. Réessayez.");
 
   const { error } = await supabase
     .from("offer_courses")
     .delete()
     .eq("id", input.courseRowId)
     .eq("offer_id", input.offerId);
-  if (error) throw new Error(`Impossible de retirer le cours de l’offre : ${error.message}`);
+  if (error) throw new Error("Impossible de retirer le cours de l’offre. Réessayez.");
 }
 
 /**
@@ -730,7 +728,7 @@ export async function deleteOfferFromSupabase(offerId: string): Promise<void> {
   const { error } = await supabase.from("offers").delete().eq("id", offerId);
   if (error) {
     console.error("Erreur suppression offer Supabase:", error);
-    throw new Error("Impossible de supprimer le produit : " + error.message);
+    throw new Error("Impossible de supprimer ce contenu. Réessayez.");
   }
 }
 
@@ -746,7 +744,7 @@ export async function claimFreeOfferRpc(offerId: string): Promise<void> {
   });
   if (error) {
     console.error("Erreur RPC claim_free_offer:", error);
-    throw new Error("Impossible d'obtenir cette offre gratuite : " + error.message);
+    throw new Error("Impossible d’activer cette offre pour le moment. Réessayez.");
   }
 }
 
@@ -769,9 +767,9 @@ export async function fetchMemberEntitlements(memberId: string): Promise<MemberE
 
   if (error) {
     console.error("Erreur lecture entitlements membre Supabase:", error);
-    throw new Error(`Impossible de charger vos accès Supabase : ${error.message}`);
+    throw new Error("Impossible de mettre à jour vos accès pour le moment. Réessayez.");
   }
-  if (!data) throw new Error("Supabase n’a renvoyé aucune donnée pour vos accès.");
+  if (!data) throw new Error("Vos accès ne sont pas disponibles pour le moment.");
 
   return (data as MemberEntitlementRow[]).filter((item) => {
     const expiry =

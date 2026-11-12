@@ -43,22 +43,25 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export const SESSION_REQUIRED_MESSAGE =
-  "Votre session Supabase est absente. Connectez-vous pour continuer.";
-export const SESSION_EXPIRED_MESSAGE =
-  "Votre session Supabase a expiré. Reconnectez-vous pour continuer.";
+  "Votre connexion n’est plus active. Reconnectez-vous pour continuer.";
+export const SESSION_EXPIRED_MESSAGE = "Votre session a expiré. Reconnectez-vous pour continuer.";
 
 export const isActiveSupabaseSession = (session: Session | null): session is Session =>
   Boolean(
     session?.user?.id &&
-      session.access_token &&
-      (!session.expires_at || session.expires_at > Math.floor(Date.now() / 1000)),
+    session.access_token &&
+    (!session.expires_at || session.expires_at > Math.floor(Date.now() / 1000)),
   );
 
 export async function requireActiveSupabaseSession(): Promise<Session> {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
   if (error) {
     await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
-    throw new Error(`Impossible de vérifier votre session Supabase : ${error.message}`);
+    console.error("Session check failed:", error);
+    throw new Error("Impossible de vérifier votre connexion. Réessayez dans quelques instants.");
   }
 
   if (!session?.user?.id || !session.access_token) {

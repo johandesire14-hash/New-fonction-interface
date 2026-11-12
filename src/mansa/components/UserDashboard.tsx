@@ -64,7 +64,10 @@ import { safeStorage } from "../utils/storage";
 import { getUserFacingErrorMessage } from "../utils/userFacingError";
 import { supabase } from "../services/supabase";
 import { deleteOfferFile, uploadOfferFile } from "../services/supabaseStorageService";
-import { deleteCreatorCourseFromOffer, saveCreatorCourseToOffer } from "../services/supabaseOfferService";
+import {
+  deleteCreatorCourseFromOffer,
+  saveCreatorCourseToOffer,
+} from "../services/supabaseOfferService";
 import {
   ProductCreationStudio,
   CreatedProductData,
@@ -316,17 +319,38 @@ export const CreatorCoursesWorkspace: React.FC<{
         if (error) throw error;
         const byId = new Map<string, CreatorCourse>();
         (data || []).forEach((row: any) => {
-          const course = byId.get(row.id) || { id: row.id, title: row.title || "Cours sans titre", description: row.description || "", chapters: [] };
-          course.chapters = (row.course_modules || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0)).map((module: any) => ({ id: module.id, title: module.title || "Chapitre", content: module.content || "", ...(module.video_url?.startsWith("http") ? { youtubeUrl: module.video_url } : module.video_url ? { videoStorageKey: module.video_url } : {}) }));
+          const course = byId.get(row.id) || {
+            id: row.id,
+            title: row.title || "Cours sans titre",
+            description: row.description || "",
+            chapters: [],
+          };
+          course.chapters = (row.course_modules || [])
+            .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((module: any) => ({
+              id: module.id,
+              title: module.title || "Chapitre",
+              content: module.content || "",
+              ...(module.video_url?.startsWith("http")
+                ? { youtubeUrl: module.video_url }
+                : module.video_url
+                  ? { videoStorageKey: module.video_url }
+                  : {}),
+            }));
           byId.set(row.id, course);
         });
         if (!cancelled) setCourses(Array.from(byId.values()));
       } catch (error) {
-        if (!cancelled) setSaveError(getUserFacingErrorMessage(error, "Impossible de charger les cours."));
-      } finally { if (!cancelled) setIsLoadingCourses(false); }
+        if (!cancelled)
+          setSaveError(getUserFacingErrorMessage(error, "Impossible de charger les cours."));
+      } finally {
+        if (!cancelled) setIsLoadingCourses(false);
+      }
     };
     void loadCourses();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [productIds]);
   const [editing, setEditing] = useState(false);
   const [courseCreationStep, setCourseCreationStep] = useState<"details" | "chapters">("details");
@@ -376,32 +400,69 @@ export const CreatorCoursesWorkspace: React.FC<{
   };
   const saveCourse = async () => {
     if (!title.trim() || isSaving) return;
-    if (productIds.length === 0) { setSaveError("Sélectionnez au moins une offre avant d’enregistrer le cours."); return; }
+    if (productIds.length === 0) {
+      setSaveError("Sélectionnez au moins une offre avant d’enregistrer le cours.");
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     const courseId = editingCourseId || `course-${Date.now()}`;
     try {
-      if (productIds.length === 0) throw new Error("Sélectionnez au moins une offre pour publier le cours.");
-      const savedByOffer = await Promise.all(productIds.map(async (offerId) => {
-        const savedChapters = await Promise.all(chapters.map(async (chapter) => {
-          const file = selectedVideoFiles[chapter.id];
-          if (!file) return chapter;
-          const stored = await uploadOfferFile(creatorId, offerId, file, `${courseId}-${chapter.id}-${file.name}`);
-          const uploadedChapter = { ...chapter, videoStorageKey: stored.storagePath, videoFileName: file.name };
-          delete uploadedChapter.youtubeUrl;
-          return uploadedChapter;
-        }));
-        const rowId = await saveCreatorCourseToOffer({ offerId, title: title.trim(), description: description.trim(), courseRowId: editingCourseId || undefined, modules: savedChapters.map((chapter) => ({ title: chapter.title, content: chapter.content, ...(chapter.youtubeUrl ? { videoUrl: chapter.youtubeUrl } : {}), ...(chapter.videoStorageKey ? { videoStorageKey: chapter.videoStorageKey } : {}) })) });
-        return { rowId, savedChapters };
-      }));
-      const course: CreatorCourse = { id: savedByOffer[0]?.rowId || courseId, title: title.trim(), description: description.trim(), chapters: savedByOffer[0]?.savedChapters || chapters };
-      setCourses((current) => editingCourseId ? current.map((existing) => existing.id === editingCourseId ? course : existing) : [...current, course]);
+      if (productIds.length === 0)
+        throw new Error("Sélectionnez au moins une offre pour publier le cours.");
+      const savedByOffer = await Promise.all(
+        productIds.map(async (offerId) => {
+          const savedChapters = await Promise.all(
+            chapters.map(async (chapter) => {
+              const file = selectedVideoFiles[chapter.id];
+              if (!file) return chapter;
+              const stored = await uploadOfferFile(
+                creatorId,
+                offerId,
+                file,
+                `${courseId}-${chapter.id}-${file.name}`,
+              );
+              const uploadedChapter = {
+                ...chapter,
+                videoStorageKey: stored.storagePath,
+                videoFileName: file.name,
+              };
+              delete uploadedChapter.youtubeUrl;
+              return uploadedChapter;
+            }),
+          );
+          const rowId = await saveCreatorCourseToOffer({
+            offerId,
+            title: title.trim(),
+            description: description.trim(),
+            courseRowId: editingCourseId || undefined,
+            modules: savedChapters.map((chapter) => ({
+              title: chapter.title,
+              content: chapter.content,
+              ...(chapter.youtubeUrl ? { videoUrl: chapter.youtubeUrl } : {}),
+              ...(chapter.videoStorageKey ? { videoStorageKey: chapter.videoStorageKey } : {}),
+            })),
+          });
+          return { rowId, savedChapters };
+        }),
+      );
+      const course: CreatorCourse = {
+        id: savedByOffer[0]?.rowId || courseId,
+        title: title.trim(),
+        description: description.trim(),
+        chapters: savedByOffer[0]?.savedChapters || chapters,
+      };
+      setCourses((current) =>
+        editingCourseId
+          ? current.map((existing) => (existing.id === editingCourseId ? course : existing))
+          : [...current, course],
+      );
       setEditing(false);
       setEditingCourseId(null);
       setSelectedVideoFiles({});
     } catch (error) {
       console.error("Creator course save failed:", error);
-      setSaveError(error instanceof Error ? error.message : String(error));
+      setSaveError("Impossible d’enregistrer le cours pour le moment. Réessayez.");
     } finally {
       setIsSaving(false);
     }
@@ -661,30 +722,34 @@ export const CreatorCoursesWorkspace: React.FC<{
           Retour aux applications
         </button>
       </div>
-      {isLoadingCourses ? <p className="text-sm text-zinc-400">Chargement des cours…</p> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <button
-          onClick={startNewCourse}
-          className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-[#0c0d0e] text-zinc-400 hover:border-purple-500/60 hover:text-white"
-        >
-          <span className="mb-3 flex size-12 items-center justify-center rounded-full border border-white/15 text-3xl">
-            +
-          </span>
-          <span className="text-sm font-semibold">Ajouter un cours</span>
-        </button>
-        {courses.map((course) => (
+      {isLoadingCourses ? (
+        <p className="text-sm text-zinc-400">Chargement des cours…</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <button
-            key={course.id}
-            onClick={() => editCourse(course)}
-            className="min-h-44 rounded-xl border border-white/10 bg-[#121316] p-4 text-left hover:border-purple-500/50"
+            onClick={startNewCourse}
+            className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-[#0c0d0e] text-zinc-400 hover:border-purple-500/60 hover:text-white"
           >
-            <div className="flex size-10 items-center justify-center rounded-lg bg-purple-500/15 text-purple-300">
-              <GraduationCap className="size-5" />
-            </div>
-            <div className="mt-5 text-sm font-bold text-white">{course.title}</div>
-            <div className="mt-1 text-xs text-zinc-500">{course.chapters.length} chapitre(s)</div>
+            <span className="mb-3 flex size-12 items-center justify-center rounded-full border border-white/15 text-3xl">
+              +
+            </span>
+            <span className="text-sm font-semibold">Ajouter un cours</span>
           </button>
-        ))}
-      </div>}
+          {courses.map((course) => (
+            <button
+              key={course.id}
+              onClick={() => editCourse(course)}
+              className="min-h-44 rounded-xl border border-white/10 bg-[#121316] p-4 text-left hover:border-purple-500/50"
+            >
+              <div className="flex size-10 items-center justify-center rounded-lg bg-purple-500/15 text-purple-300">
+                <GraduationCap className="size-5" />
+              </div>
+              <div className="mt-5 text-sm font-bold text-white">{course.title}</div>
+              <div className="mt-1 text-xs text-zinc-500">{course.chapters.length} chapitre(s)</div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -826,10 +891,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       saveSubscriptions(userKey, snapshot.subscriptions);
       setMemberAccessError(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
       console.error("Impossible de reconstruire l’accès membre depuis Supabase:", error);
       // Une erreur de lecture ne doit pas remplacer l’écran par un état vide.
-      setMemberAccessError(message);
+      setMemberAccessError(
+        "Impossible de mettre à jour vos accès pour le moment. Vos informations déjà affichées sont conservées.",
+      );
     }
   }, [authLoading, user?.uid, user?.email]);
 
@@ -841,7 +907,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     const handleMemberAccessRefresh = () => void refreshMemberAccess();
     window.addEventListener("mansa_member_access_refresh_requested", handleMemberAccessRefresh);
     return () =>
-      window.removeEventListener("mansa_member_access_refresh_requested", handleMemberAccessRefresh);
+      window.removeEventListener(
+        "mansa_member_access_refresh_requested",
+        handleMemberAccessRefresh,
+      );
   }, [refreshMemberAccess]);
 
   useEffect(() => {
@@ -1552,11 +1621,23 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         const next = scoped.map((conversation) => ({
           ...conversation,
           companyId: conversation.community_id,
-          memberName: conversation.participantName || conversation.participantUsername || conversation.member_id,
-          memberEmail: conversation.participantUsername || (isCreatorInbox ? conversation.member_id : conversation.creator_id),
+          memberName:
+            conversation.participantName ||
+            conversation.participantUsername ||
+            conversation.member_id,
+          memberEmail:
+            conversation.participantUsername ||
+            (isCreatorInbox ? conversation.member_id : conversation.creator_id),
           messages: conversation.messages.map((message) => ({
             id: message.id,
-            sender: message.sender_id === user.uid ? (isCreatorInbox ? "creator" : "member") : (isCreatorInbox ? "member" : "creator"),
+            sender:
+              message.sender_id === user.uid
+                ? isCreatorInbox
+                  ? "creator"
+                  : "member"
+                : isCreatorInbox
+                  ? "member"
+                  : "creator",
             text: message.body,
             time: message.created_at,
             createdAt: message.created_at,
@@ -1567,13 +1648,14 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           setPrivateConversations(next);
           setUnreadMessagesCount(next.reduce((total, item) => total + item.unreadCount, 0));
           setSelectedPrivateConversationId((current) =>
-            current && next.some((conversation) => conversation.id === current) ? current : next[0]?.id || null,
+            current && next.some((conversation) => conversation.id === current)
+              ? current
+              : next[0]?.id || null,
           );
         }
       } catch (error) {
         if (!cancelled) {
-          setPrivateConversations([]);
-          console.error(error instanceof Error ? error.message : "Impossible de charger les messages privés.");
+          console.error("Impossible de charger les messages privés:", error);
         }
       }
     };
@@ -1616,20 +1698,38 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       setNewChatInput("");
       const loaded = await fetchPrivateConversations();
       const isCreatorInbox = activeWorkspaceId !== "personnel" && Boolean(activeCompany);
-      setPrivateConversations(loaded.filter((conversation) => !isCreatorInbox || conversation.community_id === activeWorkspaceId).map((conversation) => ({
-        ...conversation,
-        companyId: conversation.community_id,
-        memberName: conversation.participantName || conversation.participantUsername || conversation.member_id,
-        memberEmail: conversation.participantUsername || (isCreatorInbox ? conversation.member_id : conversation.creator_id),
-        messages: conversation.messages.map((message) => ({
-          id: message.id,
-          sender: message.sender_id === user?.uid ? (isCreatorInbox ? "creator" : "member") : (isCreatorInbox ? "member" : "creator"),
-          text: message.body,
-          time: message.created_at,
-          createdAt: message.created_at,
-          readAt: message.read_at,
-        })),
-      })));
+      setPrivateConversations(
+        loaded
+          .filter(
+            (conversation) => !isCreatorInbox || conversation.community_id === activeWorkspaceId,
+          )
+          .map((conversation) => ({
+            ...conversation,
+            companyId: conversation.community_id,
+            memberName:
+              conversation.participantName ||
+              conversation.participantUsername ||
+              conversation.member_id,
+            memberEmail:
+              conversation.participantUsername ||
+              (isCreatorInbox ? conversation.member_id : conversation.creator_id),
+            messages: conversation.messages.map((message) => ({
+              id: message.id,
+              sender:
+                message.sender_id === user?.uid
+                  ? isCreatorInbox
+                    ? "creator"
+                    : "member"
+                  : isCreatorInbox
+                    ? "member"
+                    : "creator",
+              text: message.body,
+              time: message.created_at,
+              createdAt: message.created_at,
+              readAt: message.read_at,
+            })),
+          })),
+      );
     } catch (error) {
       console.error("Envoi du message privé impossible:", error);
     }
@@ -1711,8 +1811,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   return (
     <div className="mansa-dashboard mansa-viewport mansa-safe-bottom flex h-screen w-full flex-col bg-[#0f1012] text-[#eeeeee] font-sans antialiased overflow-hidden selection:bg-[#FA4616]/30 selection:text-[#FA4616]">
       {memberAccessError && (
-        <div className="absolute left-1/2 top-16 z-50 w-[min(92vw,720px)] -translate-x-1/2 rounded-xl border border-red-400/30 bg-red-950/90 px-4 py-3 text-sm text-red-100 shadow-xl" role="alert">
-          Impossible de recharger vos accès membre depuis Supabase : {memberAccessError}
+        <div
+          className="absolute left-1/2 top-16 z-50 w-[min(92vw,720px)] -translate-x-1/2 rounded-xl border border-red-400/30 bg-red-950/90 px-4 py-3 text-sm text-red-100 shadow-xl"
+          role="alert"
+        >
+          {memberAccessError}
         </div>
       )}
       {/* 1. TOP HEADER BAR (Fully Responsive) */}
@@ -3700,7 +3803,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                       </div>
                       <div>
                         <h1 className="text-sm font-bold text-white">Messages privés</h1>
-                        <p className="text-[11px] text-zinc-500">Conversations privées de la communauté</p>
+                        <p className="text-[11px] text-zinc-500">
+                          Conversations privées de la communauté
+                        </p>
                       </div>
                     </div>
                   </header>
@@ -4485,7 +4590,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             setActiveNav("produits");
           }}
           onDelete={async (productId) => {
-            await deleteProductFromFirestore(productId, user?.uid || user?.email || "creator-default");
+            await deleteProductFromFirestore(
+              productId,
+              user?.uid || user?.email || "creator-default",
+            );
             setIsProductStudioOpen(false);
             setEditingProduct(null);
           }}
@@ -4500,7 +4608,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           onClose={() => setProductToDelete(null)}
           onConfirm={async () => {
             if (productToDelete.id) {
-              await deleteProductFromFirestore(productToDelete.id, user?.uid || user?.email || "creator-default");
+              await deleteProductFromFirestore(
+                productToDelete.id,
+                user?.uid || user?.email || "creator-default",
+              );
             }
             setProductToDelete(null);
           }}
@@ -4547,7 +4658,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           onClose={() => setProjectToDelete(null)}
           onConfirm={async () => {
             if (projectToDelete.id) {
-              await deleteProductFromFirestore(projectToDelete.id, user?.uid || user?.email || "creator-default");
+              await deleteProductFromFirestore(
+                projectToDelete.id,
+                user?.uid || user?.email || "creator-default",
+              );
             }
             setProjectToDelete(null);
           }}

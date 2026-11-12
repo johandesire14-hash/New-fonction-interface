@@ -30,9 +30,7 @@ export async function uploadCompanyBrandingAsset(
 ): Promise<string> {
   if (!companyId.trim() || !file) throw new Error("Choisissez une image valide.");
   if (!storage) {
-    throw new Error(
-      "Firebase Storage n’est pas configuré. Définissez VITE_FIREBASE_STORAGE_BUCKET puis déployez les règles Storage.",
-    );
+    throw new Error("Impossible d’enregistrer cette image pour le moment. Réessayez.");
   }
   const validationError = validateCompanyBrandingImage(file);
   if (validationError) throw new Error(validationError);

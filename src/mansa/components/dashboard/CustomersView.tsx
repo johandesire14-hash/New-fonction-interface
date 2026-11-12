@@ -205,9 +205,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         refreshCustomers();
       } catch (error) {
         console.error("Impossible de charger les membres créateur depuis Supabase:", error);
-        setToast(
-          error instanceof Error ? error.message : "Impossible de charger les membres Supabase.",
-        );
+        setToast("Impossible de charger la liste des membres. Réessayez.");
       }
     };
     const unsub = subscribeToCreatorCustomers(
@@ -326,9 +324,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     if (!activeCompanyId || !creatorId || !selectedCustomer?.memberId || !messageDraft.trim()) {
       setToast(
         !creatorId
-          ? "Votre session créateur est absente. Reconnectez-vous."
+          ? "Votre connexion n’est plus active. Reconnectez-vous pour continuer."
           : !selectedCustomer?.memberId
-            ? "L’identifiant Supabase de ce membre est indisponible. Rechargez la liste des clients."
+            ? "Ce membre n’est pas disponible pour le moment. Rechargez la liste des clients."
             : "Saisissez un message avant de l’envoyer.",
       );
       window.setTimeout(() => setToast(""), 3500);
@@ -347,7 +345,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       setMessageSuccess(true);
       window.setTimeout(() => setMessageSuccess(false), 3500);
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "Impossible d’envoyer le message privé.");
+      console.error("Impossible d’envoyer le message privé:", error);
+      setToast("Impossible d’envoyer le message pour le moment. Réessayez.");
     } finally {
       setIsSendingMessage(false);
     }

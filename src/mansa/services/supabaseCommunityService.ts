@@ -121,7 +121,7 @@ export async function fetchCommunityByIdStrict(communityId: string): Promise<Com
     .maybeSingle();
   if (error) {
     console.error("Erreur lecture communauté membre Supabase:", error);
-    throw new Error(`Impossible de charger la communauté Supabase : ${error.message}`);
+    throw new Error("Impossible de charger cette communauté pour le moment. Réessayez.");
   }
   if (!data) throw new Error(`La communauté ${communityId} est introuvable dans Supabase.`);
   return mapCommunityRowToCompany(data);
@@ -145,7 +145,7 @@ export async function saveCommunityToSupabase(company: Company): Promise<Company
 
   if (error) {
     console.error("Erreur enregistrement communauté Supabase:", error);
-    throw new Error("Impossible d'enregistrer la communauté : " + error.message);
+    throw new Error("Impossible d’enregistrer la communauté pour le moment. Réessayez.");
   }
 
   return mapCommunityRowToCompany(data);
@@ -156,7 +156,7 @@ export async function deleteCommunityFromSupabase(communityId: string): Promise<
   const { error } = await supabase.from("communities").delete().eq("id", communityId);
   if (error) {
     console.error("Erreur suppression communauté Supabase:", error);
-    throw new Error("Impossible de supprimer la communauté : " + error.message);
+    throw new Error("Impossible de supprimer la communauté. Réessayez dans quelques instants.");
   }
 }
 
@@ -172,7 +172,7 @@ export async function joinCommunityRpc(communityId: string): Promise<void> {
   });
   if (error) {
     console.error("Erreur RPC join_community:", error);
-    throw new Error("Impossible de rejoindre la communauté : " + error.message);
+    throw new Error("Impossible de rejoindre cette communauté pour le moment. Réessayez.");
   }
 }
 
@@ -185,9 +185,10 @@ export async function fetchMemberCommunities(memberId: string): Promise<string[]
 
   if (error) {
     console.error("Erreur lecture communautés membre Supabase:", error);
-    throw new Error(`Impossible de charger vos communautés Supabase : ${error.message}`);
+    throw new Error("Impossible de charger vos communautés. Réessayez dans quelques instants.");
   }
-  if (!data) throw new Error("Supabase n’a renvoyé aucune communauté membre.");
+  if (!data)
+    throw new Error("Les informations de vos communautés ne sont pas disponibles pour le moment.");
   return data.map((item) => item.community_id);
 }
 

@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
-import {
-  isActiveSupabaseSession,
-  SESSION_EXPIRED_MESSAGE,
-  supabase,
-} from "../services/supabase";
+import { isActiveSupabaseSession, SESSION_EXPIRED_MESSAGE, supabase } from "../services/supabase";
 import type { FirestoreUserProfile } from "../services/dbService";
 import { safeStorage } from "../utils/storage";
 
@@ -34,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_REQUEST_TIMEOUT_MS = 15_000;
 const AUTH_TIMEOUT_MESSAGE =
-  "L'authentification Supabase prend trop de temps. Vérifiez votre connexion, puis réessayez.";
+  "La connexion prend trop de temps. Vérifiez votre réseau, puis réessayez.";
 
 const applySessionUser = (
   session: Session | null,
@@ -55,7 +51,10 @@ const applySessionUser = (
 
 const withAuthTimeout = <T,>(request: Promise<T>): Promise<T> =>
   new Promise<T>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(AUTH_TIMEOUT_MESSAGE)), AUTH_REQUEST_TIMEOUT_MS);
+    const timeout = setTimeout(
+      () => reject(new Error(AUTH_TIMEOUT_MESSAGE)),
+      AUTH_REQUEST_TIMEOUT_MS,
+    );
     request.then(
       (result) => {
         clearTimeout(timeout);
@@ -140,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (sessionError) {
           console.error("Supabase getSession error:", sessionError);
           syncUserFromSession(null);
-          setError("Impossible de vérifier votre session Supabase. Vérifiez votre connexion et réessayez.");
+          setError("Impossible de vérifier votre connexion. Réessayez dans quelques instants.");
         } else if (session && !isActiveSupabaseSession(session)) {
           syncUserFromSession(null);
           setError(SESSION_EXPIRED_MESSAGE);
@@ -156,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setError(
             err?.message === AUTH_TIMEOUT_MESSAGE
               ? AUTH_TIMEOUT_MESSAGE
-              : "Impossible de vérifier votre session Supabase. Vérifiez votre connexion et réessayez.",
+              : "Impossible de vérifier votre connexion. Réessayez dans quelques instants.",
           );
         }
       })
@@ -210,21 +209,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw signInError;
       }
 
-      const { data: { session }, error: sessionError } = await withAuthTimeout(
-        supabase.auth.getSession(),
-      );
+      const {
+        data: { session },
+        error: sessionError,
+      } = await withAuthTimeout(supabase.auth.getSession());
       if (sessionError) throw sessionError;
       if (!isActiveSupabaseSession(session)) {
         syncUserFromSession(null);
         throw new Error(
-          session ? SESSION_EXPIRED_MESSAGE : "Supabase n'a établi aucune session active. Vérifiez votre compte et reconnectez-vous.",
+          session
+            ? SESSION_EXPIRED_MESSAGE
+            : "Votre connexion n’est plus active. Reconnectez-vous pour continuer.",
         );
       }
       syncUserFromSession(session);
       setError(null);
     } catch (err: any) {
       console.error("Erreur de connexion Supabase:", err);
-      let msg = err.message || "Identifiants invalides. Vérifiez votre email et mot de passe.";
+      let msg = "Connexion impossible. Vérifiez vos informations et réessayez.";
       if (msg.includes("Invalid login credentials")) {
         msg = "Adresse email ou mot de passe incorrect.";
       } else if (msg.includes("Email not confirmed")) {
@@ -260,23 +262,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw signUpError;
       }
 
-      const { data: { session }, error: sessionError } = await withAuthTimeout(
-        supabase.auth.getSession(),
-      );
+      const {
+        data: { session },
+        error: sessionError,
+      } = await withAuthTimeout(supabase.auth.getSession());
       if (sessionError) throw sessionError;
       if (!isActiveSupabaseSession(session)) {
         syncUserFromSession(null);
         throw new Error(
           data.user
             ? "Compte créé. Confirmez votre adresse email, puis connectez-vous."
-            : "Aucune session Supabase active n'a été créée. Reconnectez-vous.",
+            : "Votre connexion n’est plus active. Reconnectez-vous pour continuer.",
         );
       }
       syncUserFromSession(session);
       setError(null);
     } catch (err: any) {
       console.error("Erreur d'inscription Supabase:", err);
-      let msg = err.message || "Erreur lors de la création du compte.";
+      let msg = "Impossible de créer le compte. Vérifiez vos informations et réessayez.";
       if (msg.includes("User already registered")) {
         msg = "Cette adresse email est déjà associée à un compte.";
       } else if (msg.includes("Password should be at least")) {
@@ -300,7 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err: any) {
       console.error("Erreur de réinitialisation Supabase:", err);
-      const msg = err.message || "Impossible d'envoyer l'email de réinitialisation.";
+      const msg = "Impossible d'envoyer le lien de réinitialisation. Réessayez.";
       setError(msg);
       throw new Error(msg);
     }
@@ -310,9 +313,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
       if (signOutError) throw signOutError;
-      const { data: { session }, error: sessionError } = await withAuthTimeout(
-        supabase.auth.getSession(),
-      );
+      const {
+        data: { session },
+        error: sessionError,
+      } = await withAuthTimeout(supabase.auth.getSession());
       if (sessionError) throw sessionError;
       syncUserFromSession(session);
     } catch (err) {

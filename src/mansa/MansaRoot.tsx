@@ -39,32 +39,6 @@ class RootErrorBoundary extends React.Component<Props, State> {
             <p className="text-sm text-white/60">
               L'application a rencontré un imprévu lors du chargement.
             </p>
-            {this.state.error && (
-              <div className="max-h-[45vh] overflow-auto rounded-xl border border-red-400/30 bg-black/40 p-4 text-left text-xs text-red-100">
-                <div className="space-y-3 break-words font-mono">
-                  <div>
-                    <div className="font-bold text-red-300">Nom de l’erreur</div>
-                    <div>{this.state.error.name || "Error"}</div>
-                  </div>
-                  <div>
-                    <div className="font-bold text-red-300">Message</div>
-                    <div>{this.state.error.message || "(message vide)"}</div>
-                  </div>
-                  <div>
-                    <div className="font-bold text-red-300">8 premières lignes de la pile</div>
-                    <pre className="mt-1 whitespace-pre-wrap">
-                      {(this.state.error.stack || "(pile indisponible)").split("\n").slice(0, 8).join("\n")}
-                    </pre>
-                  </div>
-                  <div>
-                    <div className="font-bold text-red-300">Composant fautif (componentStack)</div>
-                    <pre className="mt-1 whitespace-pre-wrap">
-                      {this.state.errorInfo?.componentStack || "(componentStack indisponible)"}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            )}
             <button
               onClick={() => window.location.reload()}
               className="px-5 py-2.5 rounded-xl bg-[#00D26A] text-black font-semibold text-sm hover:opacity-90 transition-opacity"

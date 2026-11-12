@@ -15,23 +15,28 @@ const LOGIN_REDIRECT_TIMEOUT_MS = 12_000;
 const LOGIN_REDIRECT_TIMEOUT_MESSAGE =
   "Votre connexion est établie, mais l'ouverture de Mansa prend trop de temps. Réessayez ou rechargez la page.";
 
-function AuthLoader({
-  error,
-  onRetry,
-}: {
-  error?: string;
-  onRetry?: () => void;
-}) {
+function AuthLoader({ error, onRetry }: { error?: string; onRetry?: () => void }) {
   return (
     <div className="min-h-screen w-full bg-[#0d0f10] flex flex-col items-center justify-center space-y-4">
       {error ? (
-        <div role="alert" className="max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#15181b] p-6 text-center">
+        <div
+          role="alert"
+          className="max-w-sm space-y-4 rounded-2xl border border-white/10 bg-[#15181b] p-6 text-center"
+        >
           <p className="text-sm text-[#f2f4f5]">{error}</p>
           <div className="flex justify-center gap-3">
-            <button type="button" onClick={onRetry} className="rounded-lg bg-[#3ddc84] px-4 py-2 text-xs font-bold text-black">
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-lg bg-[#3ddc84] px-4 py-2 text-xs font-bold text-black"
+            >
               Réessayer
             </button>
-            <button type="button" onClick={() => window.location.reload()} className="rounded-lg border border-white/15 px-4 py-2 text-xs font-semibold text-white">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-lg border border-white/15 px-4 py-2 text-xs font-semibold text-white"
+            >
               Recharger
             </button>
           </div>
@@ -87,17 +92,14 @@ function LoginRoute() {
   if (loading) return <AuthLoader />;
   if (user)
     return (
-      <AuthLoader
-        {...(redirectError ? { error: redirectError } : {})}
-        onRetry={retryNavigation}
-      />
+      <AuthLoader {...(redirectError ? { error: redirectError } : {})} onRetry={retryNavigation} />
     );
   return (
     <LoginPage
       key={`${mode}:${reason || ""}`}
       initialMode={mode}
       {...(reason === "session"
-        ? { initialError: "Votre session Supabase est absente ou a expiré. Reconnectez-vous pour continuer." }
+        ? { initialError: "Votre session a expiré. Reconnectez-vous pour continuer." }
         : {})}
       lang="fr"
       onLoginSuccess={retryNavigation}

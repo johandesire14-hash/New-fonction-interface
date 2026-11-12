@@ -84,7 +84,7 @@ export function computeKpayHmac(payload: string | object, secret: string): strin
 export async function grantDiscordAccess(
   discordUserId: string,
   roleName: string,
-  guildId: string = mansaConfig.discordGuildId
+  guildId: string = mansaConfig.discordGuildId,
 ): Promise<{ success: boolean; mode: "live" | "simulated"; message: string }> {
   if (mansaConfig.discordBotToken && mansaConfig.discordBotToken.length > 15) {
     try {
@@ -93,12 +93,10 @@ export async function grantDiscordAccess(
         headers: { Authorization: `Bot ${mansaConfig.discordBotToken}` },
       });
       if (!rolesRes.ok) {
-        throw new Error(`Erreur Discord Roles: ${rolesRes.statusText}`);
+        throw new Error("Impossible de contacter ce service pour le moment. Réessayez plus tard.");
       }
       const roles: any[] = await rolesRes.json();
-      const targetRole = roles.find(
-        (r) => r.name.toLowerCase() === roleName.toLowerCase()
-      );
+      const targetRole = roles.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
 
       if (!targetRole) {
         throw new Error(`Rôle '${roleName}' introuvable sur le serveur Discord.`);
@@ -113,11 +111,13 @@ export async function grantDiscordAccess(
             Authorization: `Bot ${mansaConfig.discordBotToken}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!assignRes.ok) {
-        throw new Error(`Impossible d'assigner le rôle: ${assignRes.statusText}`);
+        throw new Error(
+          "L’action n’a pas pu être exécutée. Vérifiez la configuration puis réessayez.",
+        );
       }
 
       return {
@@ -149,7 +149,7 @@ export async function grantDiscordAccess(
 export async function revokeDiscordAccess(
   discordUserId: string,
   roleName: string,
-  guildId: string = mansaConfig.discordGuildId
+  guildId: string = mansaConfig.discordGuildId,
 ): Promise<{ success: boolean; mode: "live" | "simulated"; message: string }> {
   if (mansaConfig.discordBotToken && mansaConfig.discordBotToken.length > 15) {
     try {
@@ -157,9 +157,7 @@ export async function revokeDiscordAccess(
         headers: { Authorization: `Bot ${mansaConfig.discordBotToken}` },
       });
       const roles: any[] = await rolesRes.json();
-      const targetRole = roles.find(
-        (r) => r.name.toLowerCase() === roleName.toLowerCase()
-      );
+      const targetRole = roles.find((r) => r.name.toLowerCase() === roleName.toLowerCase());
 
       if (!targetRole) {
         return { success: false, mode: "live", message: `Rôle '${roleName}' non trouvé.` };
@@ -170,11 +168,13 @@ export async function revokeDiscordAccess(
         {
           method: "DELETE",
           headers: { Authorization: `Bot ${mansaConfig.discordBotToken}` },
-        }
+        },
       );
 
       if (!removeRes.ok) {
-        throw new Error(`Erreur suppression rôle: ${removeRes.statusText}`);
+        throw new Error(
+          "L’action n’a pas pu être exécutée. Vérifiez la configuration puis réessayez.",
+        );
       }
 
       return {
@@ -184,7 +184,11 @@ export async function revokeDiscordAccess(
       };
     } catch (err: any) {
       console.error("Discord role removal failed:", err);
-      return { success: false, mode: "live", message: "Impossible d’exécuter cette action Discord. Réessayez." };
+      return {
+        success: false,
+        mode: "live",
+        message: "Impossible d’exécuter cette action Discord. Réessayez.",
+      };
     }
   }
 
@@ -200,7 +204,7 @@ export async function revokeDiscordAccess(
  */
 export async function createTelegramInviteLink(
   chatId: string = mansaConfig.telegramChatId,
-  expireHours: number = 24
+  expireHours: number = 24,
 ): Promise<{ success: boolean; inviteLink: string; mode: "live" | "simulated"; message: string }> {
   if (mansaConfig.telegramBotToken && mansaConfig.telegramBotToken.length > 15) {
     try {
@@ -216,12 +220,12 @@ export async function createTelegramInviteLink(
             expire_date: expireDate,
             name: `Mansa VIP - ${new Date().toISOString().slice(0, 10)}`,
           }),
-        }
+        },
       );
 
       const data: any = await res.json();
       if (!data.ok) {
-        throw new Error(data.description || "Erreur service Telegram");
+        throw new Error("Impossible de générer le lien pour le moment.");
       }
 
       return {
@@ -237,7 +241,8 @@ export async function createTelegramInviteLink(
   }
 
   // Génération d'un lien simulé unique
-  const randomSlug = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
+  const randomSlug =
+    Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 6);
   const simulatedLink = `https://t.me/+MansaVIP_${randomSlug}`;
 
   return {
@@ -253,7 +258,7 @@ export async function createTelegramInviteLink(
  */
 export async function revokeTelegramAccess(
   telegramUserId: string | number,
-  chatId: string = mansaConfig.telegramChatId
+  chatId: string = mansaConfig.telegramChatId,
 ): Promise<{ success: boolean; mode: "live" | "simulated"; message: string }> {
   if (mansaConfig.telegramBotToken && mansaConfig.telegramBotToken.length > 15) {
     try {
@@ -267,26 +272,25 @@ export async function revokeTelegramAccess(
             chat_id: chatId,
             user_id: Number(telegramUserId),
           }),
-        }
+        },
       );
       const banData: any = await banRes.json();
       if (!banData.ok) {
-        throw new Error(banData.description || "Erreur ban Telegram");
+        throw new Error(
+          "L’action n’a pas pu être exécutée. Vérifiez la configuration puis réessayez.",
+        );
       }
 
       // 2. Débannir immédiatement
-      await fetch(
-        `https://api.telegram.org/bot${mansaConfig.telegramBotToken}/unbanChatMember`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            user_id: Number(telegramUserId),
-            only_if_banned: true,
-          }),
-        }
-      );
+      await fetch(`https://api.telegram.org/bot${mansaConfig.telegramBotToken}/unbanChatMember`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          user_id: Number(telegramUserId),
+          only_if_banned: true,
+        }),
+      });
 
       return {
         success: true,
@@ -295,7 +299,11 @@ export async function revokeTelegramAccess(
       };
     } catch (err: any) {
       console.error("Telegram member removal failed:", err);
-      return { success: false, mode: "live", message: "Impossible d’exécuter cette action Telegram. Réessayez." };
+      return {
+        success: false,
+        mode: "live",
+        message: "Impossible d’exécuter cette action Telegram. Réessayez.",
+      };
     }
   }
 
@@ -327,10 +335,14 @@ export async function runExpirationScan(): Promise<{
 
       if (sub.platform === "discord") {
         const res = await revokeDiscordAccess(sub.platformUserId, sub.roleGranted || sub.planName);
-        details.push(`[Discord] ${sub.customerName} (${sub.platformUserId}) : Rôle révoqué -> ${res.message}`);
+        details.push(
+          `[Discord] ${sub.customerName} (${sub.platformUserId}) : Rôle révoqué -> ${res.message}`,
+        );
       } else if (sub.platform === "telegram") {
         const res = await revokeTelegramAccess(sub.platformUserId);
-        details.push(`[Telegram] ${sub.customerName} (${sub.platformUserId}) : Expulsé du groupe -> ${res.message}`);
+        details.push(
+          `[Telegram] ${sub.customerName} (${sub.platformUserId}) : Expulsé du groupe -> ${res.message}`,
+        );
       }
     }
   }

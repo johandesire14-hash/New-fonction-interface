@@ -37,7 +37,7 @@ export async function uploadOfferFile(
 
   if (uploadError) {
     console.error("Erreur téléversement Storage Supabase:", uploadError);
-    throw new Error("Impossible de téléverser le fichier : " + uploadError.message);
+    throw new Error("Impossible de téléverser ce fichier. Vérifiez son format et réessayez.");
   }
 
   // Générer une URL signée valable 24h
@@ -67,10 +67,7 @@ export async function uploadOfferFile(
 /**
  * Télécharge un fichier depuis le bucket Storage 'offer-files'
  */
-export async function downloadOfferFile(
-  storagePath: string,
-  downloadName?: string,
-): Promise<void> {
+export async function downloadOfferFile(storagePath: string, downloadName?: string): Promise<void> {
   if (!storagePath) {
     throw new Error("Chemin de fichier manquant.");
   }
@@ -78,7 +75,7 @@ export async function downloadOfferFile(
   const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(storagePath);
   if (error || !data) {
     console.error("Erreur téléchargement Storage:", error);
-    throw new Error("Impossible de télécharger le fichier : " + (error?.message || "introuvable"));
+    throw new Error("Le téléchargement n’a pas abouti. Réessayez.");
   }
 
   if (typeof window !== "undefined") {
