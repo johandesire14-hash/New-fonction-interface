@@ -266,7 +266,9 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
         }));
       }
     };
-    void loadProfileOverview().catch((error) => console.error("Impossible de charger l’aperçu du profil:", error));
+    void loadProfileOverview().catch((error) =>
+      console.error("Impossible de charger l’aperçu du profil:", error),
+    );
     const unsubscribe = subscribeToCreatorTransactions(userId, (transactions) => {
       if (!mounted) return;
       const totalEarned = transactions
@@ -695,46 +697,6 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                   <span>{saveError}</span>
                 </div>
               )}
-
-              <section className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/[0.09] to-[#14161b] p-4">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-emerald-400/15 text-lg font-bold text-emerald-300">
-                    {(username || user.name || "U").replace(/^@/, "")[0]?.toUpperCase() || "U"}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="truncate text-base font-bold text-white">
-                      @{username.replace(/^@/, "") || user.name}
-                    </h3>
-                    <p className="truncate text-xs text-zinc-400">{bio || "Aucune bio renseignée"}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
-                    <div className="mb-1 flex items-center gap-1.5 text-zinc-400"><DollarSign className="size-3.5" /> Total gagné</div>
-                    <strong className="text-sm text-white">
-                      {Number(profileOverview.totalEarned || 0).toLocaleString("fr-FR")} {profileOverview.currency}
-                    </strong>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
-                    <div className="mb-1 flex items-center gap-1.5 text-zinc-400"><MapPin className="size-3.5" /> Emplacement</div>
-                    <strong className="truncate text-sm text-white">{profileOverview.country}</strong>
-                  </div>
-                  <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
-                    <div className="mb-1 flex items-center gap-1.5 text-zinc-400"><Store className="size-3.5" /> Espaces possédés</div>
-                    <strong className="text-sm text-white">{profileOverview.ownedSpaces.length}</strong>
-                    {profileOverview.ownedSpaces.length > 0 && (
-                      <p className="mt-1 truncate text-[11px] text-zinc-500">{profileOverview.ownedSpaces.map((space) => space.name).join(", ")}</p>
-                    )}
-                  </div>
-                  <div className="rounded-xl border border-white/[0.07] bg-black/20 p-3">
-                    <div className="mb-1 flex items-center gap-1.5 text-zinc-400"><Users className="size-3.5" /> Communautés rejointes</div>
-                    <strong className="text-sm text-white">{profileOverview.joinedCommunities.length}</strong>
-                    {profileOverview.joinedCommunities.length > 0 && (
-                      <p className="mt-1 truncate text-[11px] text-zinc-500">{profileOverview.joinedCommunities.map((community) => community.name).join(", ")}</p>
-                    )}
-                  </div>
-                </div>
-              </section>
 
               {isLoadingProfile ? (
                 <div className="py-8 text-center text-xs text-zinc-400 flex flex-col items-center gap-2">
