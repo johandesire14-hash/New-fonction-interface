@@ -38,7 +38,10 @@ import {
   LOCAL_COMPANY_MEMBERS_PREFIX,
 } from "../../utils/localCommunityStore";
 import { removeSubscription } from "../../utils/subscriptionsStorage";
-import { appendLocalSupportMessage } from "../../utils/localCommunityStore";
+import {
+  createPrivateConversation,
+  sendPrivateMessage,
+} from "../../services/supabasePrivateMessagingService";
 import {
   getCustomerNote,
   isCustomerBanned,
@@ -50,6 +53,8 @@ import { fetchCreatorCommunityMembers } from "../../services/supabaseCreatorMemb
 
 interface CustomerMember {
   id: string;
+  memberId?: string;
+  communityId?: string;
   name: string;
   email: string;
   avatar: string;
@@ -92,6 +97,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [messageDraft, setMessageDraft] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [messageSuccess, setMessageSuccess] = useState(false);
   const [toast, setToast] = useState("");
   const [copiedField, setCopiedField] = useState("");
 
@@ -116,6 +123,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       const offerPrices = member.offers.map((offer) => offer.priceDisplay);
       return {
         id: `supabase-member-${member.memberId}`,
+        memberId: member.memberId,
+        communityId: member.communityId,
         name: member.name,
         email: member.email,
         avatar: initials,
@@ -139,6 +148,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         return serverMember
           ? {
               ...customer,
+              memberId: serverMember.memberId,
+              communityId: serverMember.communityId,
               productTitle: serverMember.productTitle,
               plan: serverMember.plan,
               joinedDate: serverMember.joinedDate,
@@ -160,6 +171,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             : new Date().toLocaleDateString("fr-FR");
           return {
             id: `local-member-${member.memberId}`,
+            memberId: member.memberId,
+            communityId: activeCompanyId,
             name: displayName,
             email,
             avatar: displayName
@@ -307,25 +320,38 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     window.setTimeout(() => setToast(""), 2500);
   };
 
-  const sendCustomerMessage = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!activeCompanyId || !selectedCustomer || !messageDraft.trim()) return;
-    const conversation = appendLocalSupportMessage({
-      companyId: activeCompanyId,
-      memberEmail: selectedCustomer.email,
-      memberName: selectedCustomer.name,
-      sender: "creator",
-      text: messageDraft,
-    });
-    if (!conversation) {
-      setToast("Le message local n’a pas pu être enregistré.");
-      window.setTimeout(() => setToast(""), 2500);
+  const sendCustomerMessage = async () => {
+    if (isSendingMessage) return;
+    const creatorId = profile?.uid || user?.uid;
+    if (!activeCompanyId || !creatorId || !selectedCustomer?.memberId || !messageDraft.trim()) {
+      setToast(
+        !creatorId
+          ? "Votre session créateur est absente. Reconnectez-vous."
+          : !selectedCustomer?.memberId
+            ? "L’identifiant Supabase de ce membre est indisponible. Rechargez la liste des clients."
+            : "Saisissez un message avant de l’envoyer.",
+      );
+      window.setTimeout(() => setToast(""), 3500);
       return;
     }
-    setMessageDraft("");
-    setIsMessageModalOpen(false);
-    setToast("Message ajouté à la conversation d’assistance.");
-    window.setTimeout(() => setToast(""), 2500);
+    setIsSendingMessage(true);
+    try {
+      const conversation = await createPrivateConversation({
+        communityId: selectedCustomer.communityId || activeCompanyId,
+        creatorId,
+        memberId: selectedCustomer.memberId,
+      });
+      await sendPrivateMessage({ conversationId: conversation.id, body: messageDraft });
+      setMessageDraft("");
+      setIsMessageModalOpen(false);
+      setMessageSuccess(true);
+      window.setTimeout(() => setMessageSuccess(false), 3500);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Impossible d’envoyer le message privé.");
+    } finally {
+      setIsSendingMessage(false);
+    }
+    window.setTimeout(() => setToast(""), 3000);
   };
 
   return (
@@ -881,13 +907,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         contentClassName="mx-auto max-w-md"
       >
         <form
-          onSubmit={sendCustomerMessage}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void sendCustomerMessage();
+          }}
           className="space-y-4 rounded-2xl border border-white/10 bg-[#17181a] p-5 shadow-2xl"
         >
           <div>
             <h3 className="text-lg font-bold text-white">Message à {selectedCustomer?.name}</h3>
             <p className="mt-1 text-xs text-zinc-400">
-              Le message sera ajouté à sa conversation d’assistance.
+              Le message sera envoyé directement dans votre conversation privée.
             </p>
           </div>
           <textarea
@@ -907,12 +936,13 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               Annuler
             </button>
             <button
-              type="submit"
-              disabled={!messageDraft.trim()}
+              type="button"
+              onClick={() => void sendCustomerMessage()}
+              disabled={!messageDraft.trim() || isSendingMessage}
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
             >
               <Send className="size-4" />
-              Envoyer
+              {isSendingMessage ? "Envoi…" : "Envoyer"}
             </button>
           </div>
         </form>
@@ -980,6 +1010,26 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           variant="danger"
           lang={lang}
         />
+      )}
+      {messageSuccess && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-950/95 px-4 py-3 text-sm font-semibold text-emerald-100 shadow-2xl shadow-black/40 animate-in fade-in slide-in-from-bottom-2"
+        >
+          <CheckCircle2 className="size-5 shrink-0 text-emerald-400" />
+          Message privé envoyé avec succès.
+        </div>
+      )}
+      {toast && !messageSuccess && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed bottom-5 left-1/2 z-[100] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-xl border border-red-400/30 bg-red-950/95 px-4 py-3 text-sm font-semibold text-red-100 shadow-2xl shadow-black/40"
+        >
+          <AlertCircle className="size-5 shrink-0 text-red-400" />
+          <span>{toast}</span>
+        </div>
       )}
     </div>
   );

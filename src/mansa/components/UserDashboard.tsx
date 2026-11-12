@@ -133,13 +133,10 @@ import { CompanyOnboardingModal } from "./CompanyOnboardingModal";
 import { getSavedCompanies, loadCreatorCompanies, saveCompany } from "../utils/companyStorage";
 import { filterByCompanyId, filterPersonalTransactions } from "../utils/companyScope";
 import {
-  appendLocalPrivateMessage,
-  getAllLocalPrivateConversations,
-  getLocalCompanyMembers,
-  getLocalPrivateConversations,
-  LOCAL_PRIVATE_CONVERSATIONS_EVENT,
-  LOCAL_PRIVATE_CONVERSATIONS_PREFIX,
-} from "../utils/localCommunityStore";
+  fetchPrivateConversations,
+  markPrivateConversationAsRead,
+  sendPrivateMessage,
+} from "../services/supabasePrivateMessagingService";
 const EnterpriseMemberView = React.lazy(() =>
   import("./dashboard/EnterpriseMemberView").then((m) => ({ default: m.EnterpriseMemberView })),
 );
@@ -1533,57 +1530,59 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   }, [contextTransactions]);
 
   useEffect(() => {
-    const refreshPrivateConversations = () => {
-      const isCreatorInbox = activeWorkspaceId !== "personnel" && Boolean(activeCompany);
-      const next = isCreatorInbox
-        ? [
-            ...getLocalPrivateConversations(activeWorkspaceId),
-            ...getLocalCompanyMembers(activeWorkspaceId, activeCompany?.name)
-              .filter(
-                (member) =>
-                  !getLocalPrivateConversations(activeWorkspaceId).some(
-                    (conversation) =>
-                      conversation.memberEmail.trim().toLowerCase() ===
-                      member.email.trim().toLowerCase(),
-                  ),
-              )
-              .map((member) => ({
-                id: `${activeWorkspaceId}:${member.email.trim().toLowerCase()}`,
-                companyId: activeWorkspaceId,
-                memberName: member.name,
-                memberEmail: member.email,
-                messages: [],
-              })),
-          ]
-        : getAllLocalPrivateConversations().filter(
-            (conversation) =>
-              (conversation.memberEmail || "").trim().toLowerCase() ===
-              (user?.email || "").trim().toLowerCase(),
+    let cancelled = false;
+    const refreshPrivateConversations = async () => {
+      if (!user?.uid) {
+        setPrivateConversations([]);
+        setSelectedPrivateConversationId(null);
+        return;
+      }
+      try {
+        const loaded = await fetchPrivateConversations();
+        const isCreatorInbox = activeWorkspaceId !== "personnel" && Boolean(activeCompany);
+        const scoped = isCreatorInbox
+          ? loaded.filter((conversation) => conversation.community_id === activeWorkspaceId)
+          : loaded;
+        const next = scoped.map((conversation) => ({
+          ...conversation,
+          companyId: conversation.community_id,
+          memberName: conversation.participantName || conversation.participantUsername || conversation.member_id,
+          memberEmail: conversation.participantUsername || (isCreatorInbox ? conversation.member_id : conversation.creator_id),
+          messages: conversation.messages.map((message) => ({
+            id: message.id,
+            sender: message.sender_id === user.uid ? (isCreatorInbox ? "creator" : "member") : (isCreatorInbox ? "member" : "creator"),
+            text: message.body,
+            time: message.created_at,
+            createdAt: message.created_at,
+            readAt: message.read_at,
+          })),
+        }));
+        if (!cancelled) {
+          setPrivateConversations(next);
+          setUnreadMessagesCount(next.reduce((total, item) => total + item.unreadCount, 0));
+          setSelectedPrivateConversationId((current) =>
+            current && next.some((conversation) => conversation.id === current) ? current : next[0]?.id || null,
           );
-      setPrivateConversations(next);
-      setSelectedPrivateConversationId((current) =>
-        current && next.some((conversation) => conversation.id === current)
-          ? current
-          : next[0]?.id || null,
-      );
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPrivateConversations([]);
+          console.error(error instanceof Error ? error.message : "Impossible de charger les messages privés.");
+        }
+      }
     };
-    refreshPrivateConversations();
-    const handleStorage = (event: StorageEvent) => {
-      if (!event.key?.startsWith(LOCAL_PRIVATE_CONVERSATIONS_PREFIX)) return;
-      refreshPrivateConversations();
-    };
-    window.addEventListener(LOCAL_PRIVATE_CONVERSATIONS_EVENT, refreshPrivateConversations);
-    window.addEventListener("mansa_local_company_members_updated", refreshPrivateConversations);
-    window.addEventListener("storage", handleStorage);
+    void refreshPrivateConversations();
+    const interval = window.setInterval(() => void refreshPrivateConversations(), 15000);
     return () => {
-      window.removeEventListener(LOCAL_PRIVATE_CONVERSATIONS_EVENT, refreshPrivateConversations);
-      window.removeEventListener(
-        "mansa_local_company_members_updated",
-        refreshPrivateConversations,
-      );
-      window.removeEventListener("storage", handleStorage);
+      cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [activeCompany, activeWorkspaceId, user?.email]);
+  }, [activeCompany, activeWorkspaceId, user?.uid]);
+
+  useEffect(() => {
+    if (!selectedPrivateConversationId) return;
+    void markPrivateConversationAsRead(selectedPrivateConversationId).catch(() => undefined);
+  }, [selectedPrivateConversationId]);
 
   const visiblePrivateConversations = privateConversations
     .filter((conversation) => {
@@ -1596,64 +1595,38 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
       );
     })
     .sort((a, b) => {
-      const aLast = a.messages.at(-1)?.id || "";
-      const bLast = b.messages.at(-1)?.id || "";
+      const aLast = a.messages.at(-1)?.createdAt || "";
+      const bLast = b.messages.at(-1)?.createdAt || "";
       return messageSortOrder === "recent"
         ? bLast.localeCompare(aLast)
         : aLast.localeCompare(bLast);
     });
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selected = privateConversations.find(
-      (conversation) => conversation.id === selectedPrivateConversationId,
-    );
-    if (!selected || !newChatInput.trim()) return;
-    const isCreatorInbox = activeWorkspaceId !== "personnel" && Boolean(activeCompany);
-    const saved = appendLocalPrivateMessage({
-      companyId: selected.companyId,
-      memberEmail: selected.memberEmail,
-      memberName: selected.memberName,
-      sender: isCreatorInbox ? "creator" : "member",
-      text: newChatInput.trim(),
-    });
-    if (saved) {
-      setPrivateConversations((previous) =>
-        previous.map((conversation) => (conversation.id === saved.id ? saved : conversation)),
-      );
-
-      const memberMessageCount = saved.messages.filter((item) => item.sender === "member").length;
-      if (!isCreatorInbox && memberMessageCount === 1) {
-        const userKey = user?.uid || user?.email || "default";
-        const company = getSavedCompanies(userKey).find(
-          (item) => item.id === selected.companyId || item.name === selected.companyId,
-        );
-        if (company?.supportAutoReplyEnabled !== false) {
-          const autoReply = (
-            company?.supportAutoReplyMessage ||
-            `Message bien reçu. L'équipe de ${company?.name || "l’entreprise"} vous répondra dans les plus brefs délais.`
-          )
-            .replace(/\{nom\}/gi, user?.name || "Membre")
-            .replace(/\{entreprise\}/gi, company?.name || "l’entreprise");
-          window.setTimeout(() => {
-            const reply = appendLocalPrivateMessage({
-              companyId: selected.companyId,
-              memberEmail: selected.memberEmail,
-              memberName: selected.memberName,
-              sender: "creator",
-              text: autoReply,
-            });
-            if (reply) {
-              setPrivateConversations((previous) =>
-                previous.map((conversation) =>
-                  conversation.id === reply.id ? reply : conversation,
-                ),
-              );
-            }
-          }, 1000);
-        }
-      }
+    const text = newChatInput.trim();
+    if (!selectedPrivateConversationId || !text) return;
+    try {
+      await sendPrivateMessage({ conversationId: selectedPrivateConversationId, body: text });
+      setNewChatInput("");
+      const loaded = await fetchPrivateConversations();
+      const isCreatorInbox = activeWorkspaceId !== "personnel" && Boolean(activeCompany);
+      setPrivateConversations(loaded.filter((conversation) => !isCreatorInbox || conversation.community_id === activeWorkspaceId).map((conversation) => ({
+        ...conversation,
+        companyId: conversation.community_id,
+        memberName: conversation.participantName || conversation.participantUsername || conversation.member_id,
+        memberEmail: conversation.participantUsername || (isCreatorInbox ? conversation.member_id : conversation.creator_id),
+        messages: conversation.messages.map((message) => ({
+          id: message.id,
+          sender: message.sender_id === user?.uid ? (isCreatorInbox ? "creator" : "member") : (isCreatorInbox ? "member" : "creator"),
+          text: message.body,
+          time: message.created_at,
+          createdAt: message.created_at,
+          readAt: message.read_at,
+        })),
+      })));
+    } catch (error) {
+      console.error("Envoi du message privé impossible:", error);
     }
-    setNewChatInput("");
   };
 
   const formattedBalance = new Intl.NumberFormat("fr-FR", {
@@ -3720,8 +3693,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         <MessageSquare className="size-5" />
                       </div>
                       <div>
-                        <h1 className="text-sm font-bold text-white">Messages</h1>
-                        <p className="text-[11px] text-zinc-500">Vos conversations privées</p>
+                        <h1 className="text-sm font-bold text-white">Messages privés</h1>
+                        <p className="text-[11px] text-zinc-500">Conversations privées de la communauté</p>
                       </div>
                     </div>
                   </header>
@@ -3828,7 +3801,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               </div>
                             </div>
                             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
-                              {conversation.messages.map((item) => {
+                              {conversation.messages.map((item: any) => {
                                 const mine =
                                   item.sender ===
                                   (activeWorkspaceId === "personnel" ? "member" : "creator");
