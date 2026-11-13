@@ -25,6 +25,7 @@ import {
   Layers,
   Terminal,
 } from "lucide-react";
+import { AnimatedNumber } from "../common/AnimatedNumber";
 import { DiscordIcon, TelegramIcon } from "../common/Icons";
 import { getUserFacingErrorMessage } from "../../utils/userFacingError";
 
@@ -337,7 +338,8 @@ export const MansaAutomationView: React.FC<{ lang: "fr" | "en" }> = ({ lang }) =
               Volume Mobile Money
             </span>
             <div className="text-xl font-bold text-white font-mono">
-              {totalRevenueXOF.toLocaleString()} <span className="text-xs text-[#FA4616]">XOF</span>
+              <AnimatedNumber value={totalRevenueXOF} locale="fr-FR" />{" "}
+              <span className="text-xs text-[#FA4616]">XOF</span>
             </div>
             <div className="text-[10px] text-zinc-500 font-mono">Orange, MTN, Wave, Moov</div>
           </div>

@@ -32,6 +32,7 @@ import {
   Coins,
   Globe,
 } from "lucide-react";
+import { AnimatedNumber } from "../common/AnimatedNumber";
 import {
   CurrencyCode,
   SUPPORTED_CURRENCIES,
@@ -749,10 +750,10 @@ export const RevenueAnalyticsChart: React.FC<RevenueAnalyticsChartProps> = ({
             </span>
           </div>
           <div className="text-base sm:text-xl lg:text-2xl font-extrabold text-white font-mono truncate" title={formatCurrency(metrics.totalRev, activeCurrency)}>
-            {formatCurrency(metrics.totalRev, activeCurrency)}
+            <AnimatedNumber value={metrics.totalRev} currency={activeCurrency} />
           </div>
           <div className="text-[10px] text-zinc-500 font-mono truncate">
-            Moyenne : {formatCurrency(metrics.avgDailyRev, activeCurrency)}/jour
+            Moyenne : <AnimatedNumber value={metrics.avgDailyRev} currency={activeCurrency} />/jour
           </div>
         </div>
 
@@ -763,7 +764,8 @@ export const RevenueAnalyticsChart: React.FC<RevenueAnalyticsChartProps> = ({
             <ShoppingCart className="size-3.5 text-zinc-500 shrink-0" />
           </div>
           <div className="text-base sm:text-xl lg:text-2xl font-extrabold text-white font-mono">
-            {metrics.totalSales} <span className="text-xs font-normal text-zinc-400">commandes</span>
+            <AnimatedNumber value={metrics.totalSales} locale={lang === "fr" ? "fr-FR" : "en-US"} />{" "}
+            <span className="text-xs font-normal text-zinc-400">commandes</span>
           </div>
           <div className="text-[10px] text-zinc-500 font-mono">
             100% livraison auto
@@ -777,7 +779,7 @@ export const RevenueAnalyticsChart: React.FC<RevenueAnalyticsChartProps> = ({
             <DollarSign className="size-3.5 text-zinc-500 shrink-0" />
           </div>
           <div className="text-base sm:text-xl lg:text-2xl font-extrabold text-white font-mono truncate" title={formatCurrency(metrics.aov, activeCurrency)}>
-            {formatCurrency(metrics.aov, activeCurrency)}
+            <AnimatedNumber value={metrics.aov} currency={activeCurrency} />
           </div>
           <div className="text-[10px] text-emerald-400 font-mono">
             +14% vs mois dernier
@@ -791,10 +793,10 @@ export const RevenueAnalyticsChart: React.FC<RevenueAnalyticsChartProps> = ({
             <Calendar className="size-3.5 text-zinc-500 shrink-0" />
           </div>
           <div className="text-base sm:text-xl lg:text-2xl font-extrabold text-white font-mono text-[#00D26A] truncate" title={formatCurrency(metrics.bestDay.revenue, activeCurrency)}>
-            {formatCurrency(metrics.bestDay.revenue, activeCurrency)}
+            <AnimatedNumber value={metrics.bestDay.revenue} currency={activeCurrency} />
           </div>
           <div className="text-[10px] text-zinc-400 font-mono truncate">
-            {metrics.bestDay.date} ({metrics.bestDay.salesCount} ventes)
+            {metrics.bestDay.date} (<AnimatedNumber value={metrics.bestDay.salesCount} /> ventes)
           </div>
         </div>
       </div>

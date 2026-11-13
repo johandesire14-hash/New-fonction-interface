@@ -291,6 +291,7 @@ export interface CreatorPlatformOffer {
 export interface EnterpriseSubscription {
   id: string;
   companyId: string;
+  creatorId?: string;
   companyName: string;
   companyInitials?: string;
   companyLogo?: string;
@@ -301,7 +302,7 @@ export interface EnterpriseSubscription {
   productId?: string;
   priceDisplay: string;
   status: "active" | "trial" | "canceled";
-  subscribedAt: string;
+  subscribedAt?: string;
   onlineMembersCount?: number;
   includedApps: string[];
   unlockedProductIds?: string[];

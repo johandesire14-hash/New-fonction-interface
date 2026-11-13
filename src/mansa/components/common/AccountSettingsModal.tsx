@@ -404,7 +404,7 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
     setSaveSuccess(false);
 
     try {
-      await updateUserProfile(userId, {
+      const updatedProfile = await updateUserProfile(userId, {
         handle: username.trim().startsWith("@") ? username.trim() : `@${username.trim()}`,
         bio: bio.trim(),
         birthDate: birthDate.trim(),
@@ -414,6 +414,9 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
         showOwnedWhops: showOwnedBusinesses,
         showJoinedWhops,
       });
+      window.dispatchEvent(
+        new CustomEvent("mansa_profile_updated", { detail: updatedProfile }),
+      );
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3500);

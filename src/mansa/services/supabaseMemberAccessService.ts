@@ -1,5 +1,9 @@
 import type { Company, CreatorPlatformOffer, EnterpriseSubscription } from "../types";
-import { fetchCommunityByIdStrict, fetchMemberCommunities } from "./supabaseCommunityService";
+import {
+  fetchCommunityByIdStrict,
+  fetchMemberCommunityMemberships,
+  type MemberCommunityMembership,
+} from "./supabaseCommunityService";
 import {
   fetchCompanyOffersFromSupabase,
   fetchMemberEntitlements,
@@ -30,6 +34,7 @@ const buildSubscription = (
   community: Company,
   offers: CreatorPlatformOffer[],
   entitlements: MemberEntitlementRow[],
+  membership: MemberCommunityMembership,
 ): EnterpriseSubscription => {
   const activeEntitlements = entitlements.filter(isActiveEntitlement);
   const unlockedOfferIds = unique(activeEntitlements.map((item) => item.offer_id));
@@ -44,6 +49,7 @@ const buildSubscription = (
   return {
     id: community.id,
     companyId: community.id,
+    creatorId: community.ownerUid,
     companyName: community.name,
     companyInitials: community.logoInitials || community.name.slice(0, 2).toUpperCase(),
     ...(community.companyLogo ? { companyLogo: community.companyLogo } : {}),
@@ -53,7 +59,7 @@ const buildSubscription = (
     ...(firstOffer?.id ? { productId: firstOffer.id } : {}),
     priceDisplay: firstOffer?.priceDisplay || "Gratuit",
     status: "active",
-    subscribedAt: "Membre depuis Supabase",
+    ...(membership.joinedAt ? { subscribedAt: membership.joinedAt } : {}),
     includedApps,
     unlockedProductIds: unlockedOfferIds,
     purchasedOfferIds: unlockedOfferIds,
@@ -75,10 +81,14 @@ export function buildMemberAccessSnapshot(input: {
   communities: Company[];
   offersByCommunity: Record<string, CreatorPlatformOffer[]>;
   entitlements: MemberEntitlementRow[];
+  memberships: MemberCommunityMembership[];
 }): MemberAccessSnapshot {
   const activeEntitlements = input.entitlements.filter(isActiveEntitlement);
   const unlockedOfferIds = unique(activeEntitlements.map((item) => item.offer_id));
   const entitlementsByCommunity = new Map<string, MemberEntitlementRow[]>();
+  const membershipByCommunity = new Map(
+    input.memberships.map((membership) => [membership.communityId, membership]),
+  );
 
   for (const entitlement of activeEntitlements) {
     const offer = Object.values(input.offersByCommunity)
@@ -94,6 +104,7 @@ export function buildMemberAccessSnapshot(input: {
       community,
       input.offersByCommunity[community.id] || [],
       entitlementsByCommunity.get(community.id) || [],
+      membershipByCommunity.get(community.id) || { communityId: community.id, joinedAt: null },
     ),
   );
 
@@ -105,12 +116,14 @@ export async function fetchMemberAccessFromSupabase(
 ): Promise<MemberAccessSnapshot> {
   if (!memberId) return { communities: [], subscriptions: [], unlockedOfferIds: [] };
 
-  const [communityIds, entitlements] = await Promise.all([
-    fetchMemberCommunities(memberId),
+  const [memberships, entitlements] = await Promise.all([
+    fetchMemberCommunityMemberships(memberId),
     fetchMemberEntitlements(memberId),
   ]);
 
-  const communities = await Promise.all(communityIds.map((id) => fetchCommunityByIdStrict(id)));
+  const communities = await Promise.all(
+    memberships.map(({ communityId }) => fetchCommunityByIdStrict(communityId)),
+  );
   const offersEntries = await Promise.all(
     communities.map(
       async (community) =>
@@ -122,5 +135,6 @@ export async function fetchMemberAccessFromSupabase(
     communities,
     offersByCommunity: Object.fromEntries(offersEntries),
     entitlements,
+    memberships,
   });
 }

@@ -13,6 +13,7 @@ import {
   MIN_WITHDRAWAL_AMOUNT_XOF,
 } from "../../utils/creatorFinancialEngine";
 import { CurrencyCode, formatCurrency } from "../../utils/currency";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { PayoutMethodConfig, WithdrawalRequest } from "../../types";
 import { WithdrawalRequestModal } from "./WithdrawalRequestModal";
 
@@ -73,11 +74,12 @@ export const AccountPortfolioTab: React.FC<AccountPortfolioTabProps> = ({
             </span>
           </div>
           <div className="mb-3 font-mono text-2xl font-black text-white">
-            {formatCurrency(balance.availableBalance, activeCurrency)}
+            <AnimatedNumber value={balance.availableBalance} currency={activeCurrency} />
           </div>
           {balance.pendingBalance > 0 && (
             <p className="mb-3 text-[11px] text-zinc-400">
-              En attente de compensation : {formatCurrency(balance.pendingBalance, activeCurrency)}
+              En attente de compensation :{" "}
+              <AnimatedNumber value={balance.pendingBalance} currency={activeCurrency} />
             </p>
           )}
           <button

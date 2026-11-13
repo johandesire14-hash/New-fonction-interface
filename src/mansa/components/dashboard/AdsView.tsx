@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { CurrencyCode, formatCurrency } from "../../utils/currency";
+import { AnimatedNumber } from "../common/AnimatedNumber";
 import { ModalOverlay } from "../common/ModalOverlay";
 
 interface AdCampaign {
@@ -49,8 +50,8 @@ export const AdsView: React.FC<AdsViewProps> = ({ lang = "fr", currency = "XAF" 
   const totalClicks = campaigns.reduce((acc, c) => acc + c.clicks, 0);
   const totalConversions = campaigns.reduce((acc, c) => acc + c.conversions, 0);
   const totalRevenue = campaigns.reduce((acc, c) => acc + c.revenue, 0);
-  const avgRoas = totalSpent > 0 ? (totalRevenue / totalSpent).toFixed(1) : "0.0";
-  const conversionRate = totalClicks > 0 ? ((totalConversions / totalClicks) * 100).toFixed(1) + "%" : "0%";
+  const avgRoas = totalSpent > 0 ? totalRevenue / totalSpent : 0;
+  const conversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0;
   const avgCpcFormatted = totalClicks > 0 ? formatCurrency(totalSpent / totalClicks, activeCurrency) : formatCurrency(0, activeCurrency);
 
   const toggleCampaign = (id: string) => {
@@ -113,7 +114,7 @@ export const AdsView: React.FC<AdsViewProps> = ({ lang = "fr", currency = "XAF" 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d0e] p-5 space-y-1.5">
           <span className="text-xs text-zinc-400 font-medium">Dépenses Publicitaires Totales</span>
           <div className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
-            {formatCurrency(totalSpent, activeCurrency)}
+            <AnimatedNumber value={totalSpent} currency={activeCurrency} />
           </div>
           <div className="text-[11px] text-zinc-400">Budget maîtrisé et plafonné</div>
         </div>
@@ -121,7 +122,7 @@ export const AdsView: React.FC<AdsViewProps> = ({ lang = "fr", currency = "XAF" 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d0e] p-5 space-y-1.5">
           <span className="text-xs text-zinc-400 font-medium">Clics & Visiteurs Envoyés</span>
           <div className="text-2xl sm:text-3xl font-extrabold text-[#6699ff] font-mono">
-            {totalClicks.toLocaleString()}
+            <AnimatedNumber value={totalClicks} />
           </div>
           <div className="text-[11px] text-zinc-400">CPC moyen : {avgCpcFormatted}</div>
         </div>
@@ -129,17 +130,22 @@ export const AdsView: React.FC<AdsViewProps> = ({ lang = "fr", currency = "XAF" 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d0e] p-5 space-y-1.5">
           <span className="text-xs text-zinc-400 font-medium">Ventes Directes Réalisées</span>
           <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono">
-            {totalConversions}
+            <AnimatedNumber value={totalConversions} />
           </div>
-          <div className="text-[11px] text-emerald-400">Taux de conversion : {conversionRate}</div>
+          <div className="text-[11px] text-emerald-400">
+            Taux de conversion :{" "}
+            <AnimatedNumber value={conversionRate} decimals={totalClicks > 0 ? 1 : 0} suffix="%" />
+          </div>
         </div>
 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d0e] p-5 space-y-1.5">
           <span className="text-xs text-zinc-400 font-medium">Retour sur Dépense (ROAS)</span>
           <div className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
-            {avgRoas}x
+            <AnimatedNumber value={avgRoas} decimals={1} suffix="x" />
           </div>
-          <div className="text-[11px] text-emerald-400">{formatCurrency(totalRevenue, activeCurrency)} générés</div>
+          <div className="text-[11px] text-emerald-400">
+            <AnimatedNumber value={totalRevenue} currency={activeCurrency} /> générés
+          </div>
         </div>
 
       </div>

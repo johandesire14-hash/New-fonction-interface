@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { BusinessProject } from "../../types";
 import { CurrencyCode, formatCurrency, convertFromUSD } from "../../utils/currency";
+import { AnimatedNumber } from "../common/AnimatedNumber";
 import { ConfirmActionModal } from "../common/ConfirmActionModal";
 import { ModalOverlay } from "../common/ModalOverlay";
 import { siteUrl } from "@/lib/site";
@@ -257,7 +258,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <TrendingUp className="size-4 text-[#00D26A]" />
           </div>
           <div className="text-2xl font-black text-white font-mono">
-            {formatCurrency(totalEstimatedMRR, activeCurrency, { compact: true })}
+            <AnimatedNumber value={totalEstimatedMRR} currency={activeCurrency} compact />
           </div>
           <div className="text-[11px] text-[#00D26A] font-medium">
             +18.4% ce mois

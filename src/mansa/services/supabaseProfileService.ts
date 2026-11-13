@@ -15,6 +15,12 @@ export interface ProfileRow {
   updated_at?: string;
 }
 
+export interface PublicCreatorProfileIdentity {
+  uid: string;
+  displayName: string;
+  handle?: string;
+}
+
 export const mapProfileRowToUserProfile = (row: ProfileRow): FirestoreUserProfile => {
   const name = row.display_name || row.email?.split("@")[0] || "Créateur";
   const initials =
@@ -50,6 +56,24 @@ export const mapProfileRowToUserProfile = (row: ProfileRow): FirestoreUserProfil
     updatedAt: row.updated_at || new Date().toISOString(),
   };
 };
+
+export async function fetchPublicCreatorProfileIdentity(
+  userId: string,
+): Promise<PublicCreatorProfileIdentity | null> {
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, handle")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return {
+    uid: data.id,
+    displayName: data.display_name?.trim() || "",
+    ...(data.handle?.trim() ? { handle: data.handle.trim() } : {}),
+  };
+}
 
 export async function fetchUserProfile(userId: string): Promise<FirestoreUserProfile | null> {
   if (!userId) return null;

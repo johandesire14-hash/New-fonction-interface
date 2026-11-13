@@ -36,6 +36,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { ModalOverlay } from "../common/ModalOverlay";
 import { WithdrawalRequestModal } from "../common/WithdrawalRequestModal";
+import { AnimatedNumber } from "../common/AnimatedNumber";
 import {
   subscribeToCreatorTransactions,
   createRealTransaction,
@@ -613,7 +614,10 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                 <Wallet className="size-4 text-emerald-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold font-mono text-white tracking-tight">
-                {formatCurrency(balance.totalNetRevenue - balance.totalWithdrawn, activeCurrency)}
+                <AnimatedNumber
+                  value={balance.totalNetRevenue - balance.totalWithdrawn}
+                  currency={activeCurrency}
+                />
               </div>
               <p className="text-[11px] text-zinc-500 leading-tight">
                 {isCompanyContext
@@ -632,7 +636,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                 <ArrowUpRight className="size-4 text-emerald-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-400 tracking-tight">
-                {formatCurrency(balance.availableBalance, activeCurrency)}
+                <AnimatedNumber value={balance.availableBalance} currency={activeCurrency} />
               </div>
               <p className="text-[11px] text-emerald-400/80 leading-tight">
                 Fonds débloqués prêts pour un virement immédiat vers vos comptes.
@@ -648,7 +652,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                 </span>
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold font-mono text-amber-400 tracking-tight">
-                {formatCurrency(balance.pendingBalance, activeCurrency)}
+                <AnimatedNumber value={balance.pendingBalance} currency={activeCurrency} />
               </div>
               <div className="flex items-center justify-between gap-2 pt-1">
                 <p className="text-[10px] text-zinc-500">Délai de compensation antifraude.</p>
@@ -686,7 +690,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                     1. Ventes de mes Entreprises
                   </div>
                   <div className="text-lg font-extrabold font-mono text-white">
-                    {formatCurrency(personalBreakdown.companies, activeCurrency)}
+                    <AnimatedNumber value={personalBreakdown.companies} currency={activeCurrency} />
                   </div>
                   <p className="text-[10px] text-zinc-500">
                     Revenus cumulés de toutes vos entreprises actives
@@ -698,7 +702,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                     2. Revenus d'Affiliation
                   </div>
                   <div className="text-lg font-extrabold font-mono text-indigo-400">
-                    {formatCurrency(personalBreakdown.affiliates, activeCurrency)}
+                    <AnimatedNumber value={personalBreakdown.affiliates} currency={activeCurrency} />
                   </div>
                   <p className="text-[10px] text-zinc-500">
                     Commissions générées sur la recommandation d'autres créateurs
@@ -710,7 +714,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                     3. Autres Revenus Mansa
                   </div>
                   <div className="text-lg font-extrabold font-mono text-emerald-400">
-                    {formatCurrency(personalBreakdown.other, activeCurrency)}
+                    <AnimatedNumber value={personalBreakdown.other} currency={activeCurrency} />
                   </div>
                   <p className="text-[10px] text-zinc-500">
                     Bonus, partenariats et récompenses plateforme
@@ -968,7 +972,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
             <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d0e] p-5 space-y-1">
               <div className="text-xs text-zinc-400 font-semibold">Total Retraits Déjà Versés</div>
               <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
-                {formatCurrency(balance.totalWithdrawn, activeCurrency)}
+                <AnimatedNumber value={balance.totalWithdrawn} currency={activeCurrency} />
               </div>
               <div className="text-[11px] text-zinc-500">
                 Montants reçus sur vos comptes Mobile Money ou bancaires.
@@ -978,7 +982,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
             <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d0e] p-5 space-y-1">
               <div className="text-xs text-zinc-400 font-semibold">Solde Disponible au Retrait</div>
               <div className="text-xl sm:text-2xl font-bold font-mono text-white">
-                {formatCurrency(balance.availableBalance, activeCurrency)}
+                <AnimatedNumber value={balance.availableBalance} currency={activeCurrency} />
               </div>
               <div className="text-[11px] text-zinc-500">
                 Fonds immédiatement transférables sans délai.
@@ -998,7 +1002,7 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
               <div className="text-right">
                 <div className="text-[10px] text-zinc-400">Disponible au retrait :</div>
                 <div className="text-base font-bold font-mono text-emerald-400">
-                  {formatCurrency(balance.availableBalance, activeCurrency)}
+                  <AnimatedNumber value={balance.availableBalance} currency={activeCurrency} />
                 </div>
               </div>
               <button

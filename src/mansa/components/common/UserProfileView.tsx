@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getUserProfile, subscribeToCreatorTransactions } from "../../services/dbService";
 import { supabase } from "../../services/supabase";
+import { AnimatedNumber } from "./AnimatedNumber";
 
 interface UserProfileViewProps {
   userId: string;
@@ -118,7 +119,9 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                 <div className="rounded-2xl border border-white/10 bg-[#181a1f] p-4">
                   <DollarSign className="mb-2 size-5 text-emerald-400" />
                   <p className="text-xs text-zinc-500">Total gagné</p>
-                  <p className="mt-1 text-base font-bold text-white">{totalEarned.toLocaleString("fr-FR")} {profile?.currency || "XOF"}</p>
+                  <p className="mt-1 text-base font-bold text-white">
+                    <AnimatedNumber value={totalEarned} suffix={` ${profile?.currency || "XOF"}`} />
+                  </p>
                 </div>
               )}
               {canShowLocation && (

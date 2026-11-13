@@ -176,11 +176,18 @@ export async function joinCommunityRpc(communityId: string): Promise<void> {
   }
 }
 
-export async function fetchMemberCommunities(memberId: string): Promise<string[]> {
+export interface MemberCommunityMembership {
+  communityId: string;
+  joinedAt: string | null;
+}
+
+export async function fetchMemberCommunityMemberships(
+  memberId: string,
+): Promise<MemberCommunityMembership[]> {
   if (!memberId) return [];
   const { data, error } = await supabase
     .from("community_members")
-    .select("community_id")
+    .select("community_id, joined_at")
     .eq("member_id", memberId);
 
   if (error) {
@@ -189,7 +196,12 @@ export async function fetchMemberCommunities(memberId: string): Promise<string[]
   }
   if (!data)
     throw new Error("Les informations de vos communautés ne sont pas disponibles pour le moment.");
-  return data.map((item) => item.community_id);
+  return data.map((item) => ({ communityId: item.community_id, joinedAt: item.joined_at || null }));
+}
+
+export async function fetchMemberCommunities(memberId: string): Promise<string[]> {
+  const memberships = await fetchMemberCommunityMemberships(memberId);
+  return memberships.map((membership) => membership.communityId);
 }
 
 export async function fetchCommunityMemberCount(communityId: string): Promise<number> {

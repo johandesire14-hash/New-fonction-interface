@@ -135,7 +135,15 @@ import { getVisibleIncludedAppNames } from "../../utils/memberAppAccess";
 import { createOrGetAffiliateLink } from "../../services/affiliateService";
 import { siteUrl } from "@/lib/site";
 import { getUserFacingErrorMessage } from "../../utils/userFacingError";
+import { fetchPublicCreatorProfileIdentity } from "../../services/supabaseProfileService";
+import type { PublicCreatorProfileIdentity } from "../../services/supabaseProfileService";
 import logoImg from "../../assets/images/afhub_logo_africa_1787956612844.webp";
+
+const formatCreatorProfileName = (profile: PublicCreatorProfileIdentity): string => {
+  const handle = profile.handle?.trim();
+  if (handle) return handle.startsWith("@") ? handle : `@${handle}`;
+  return profile.displayName.trim();
+};
 
 interface EnterpriseMemberViewProps {
   subscription: EnterpriseSubscription;
@@ -466,7 +474,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
   // Security Check: ONLY the true creator owner of this company can modify its branding, post news, and manage apps
   const isCompanyOwner = React.useMemo(() => {
     // 1. Direct owner check if ownerId or creatorEmail is attached to subscription
-    const subOwnerId = (currentSub as any).ownerId;
+    const subOwnerId = currentSub.creatorId || (currentSub as any).ownerId;
     const subCreatorEmail = (currentSub as any).creatorEmail;
     if (user) {
       if (subOwnerId && (subOwnerId === (user as any).uid || subOwnerId === user.email)) {
@@ -492,12 +500,73 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
   }, [
     creatorCompanies,
     currentSub.companyId,
+    currentSub.creatorId,
     currentSub.id,
     currentSub.companyName,
     (currentSub as any).ownerId,
     (currentSub as any).creatorEmail,
     user,
   ]);
+
+  const creatorId =
+    currentSub.creatorId ||
+    creatorCompanies.find(
+      (company: any) => company?.id === currentSub.companyId || company?.id === currentSub.id,
+    )?.ownerUid ||
+    "";
+  const [creatorProfileName, setCreatorProfileName] = useState("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+    let profileWasUpdated = false;
+    if (!creatorId) {
+      setCreatorProfileName("");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void fetchPublicCreatorProfileIdentity(creatorId)
+      .then((profile) => {
+        if (!cancelled && !profileWasUpdated) {
+          setCreatorProfileName(profile ? formatCreatorProfileName(profile) : "");
+        }
+      })
+      .catch(() => {
+        if (!cancelled && !profileWasUpdated) setCreatorProfileName("");
+      });
+
+    const handleProfileUpdated = (event: Event) => {
+      const profile = (event as CustomEvent<PublicCreatorProfileIdentity>).detail;
+      if (profile?.uid === creatorId) {
+        profileWasUpdated = true;
+        setCreatorProfileName(formatCreatorProfileName(profile));
+      }
+    };
+    window.addEventListener("mansa_profile_updated", handleProfileUpdated);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("mansa_profile_updated", handleProfileUpdated);
+    };
+  }, [creatorId]);
+
+  const creatorDisplayName =
+    creatorProfileName ||
+    (isCompanyOwner
+      ? user?.name || ""
+      : !creatorId && currentSub.hasJoined !== true
+        ? currentSub.creatorName || ""
+        : "");
+
+  const joinedAtText = React.useMemo(() => {
+    if (isCompanyOwner || currentSub.hasJoined === false || !currentSub.subscribedAt) return "";
+    const joinedAt = new Date(currentSub.subscribedAt);
+    if (Number.isNaN(joinedAt.getTime())) return "";
+    return new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-US", {
+      dateStyle: "long",
+    }).format(joinedAt);
+  }, [currentSub.hasJoined, currentSub.subscribedAt, isCompanyOwner, lang]);
 
   // Publications / Actualités propres à cette entreprise (isolées strictement par entreprise)
   const [postsRefreshTrigger, setPostsRefreshTrigger] = useState(0);
@@ -2904,23 +2973,25 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                     )}
 
                     {/* Métadonnées uniquement lorsqu’elles existent réellement. */}
-                    {(currentSub.creatorName || currentSub.subscribedAt) && (
+                    {(creatorDisplayName || joinedAtText) && (
                       <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs sm:text-sm text-zinc-400">
-                        {currentSub.creatorName && (
+                        {creatorDisplayName && (
                           <div className="flex items-center gap-1.5">
                             <User className="size-3.5 text-zinc-500 shrink-0" />
                             <span>
-                              Créé par{" "}
+                              {lang === "fr" ? "Créé par" : "Created by"}{" "}
                               <strong className="font-semibold text-zinc-200">
-                                {currentSub.creatorName}
+                                {creatorDisplayName}
                               </strong>
                             </span>
                           </div>
                         )}
-                        {currentSub.subscribedAt && (
+                        {joinedAtText && (
                           <div className="flex items-center gap-1.5">
                             <Calendar className="size-3.5 text-zinc-500 shrink-0" />
-                            <span>Membre depuis {currentSub.subscribedAt}</span>
+                            <span>
+                              {lang === "fr" ? "Membre depuis" : "Member since"} {joinedAtText}
+                            </span>
                           </div>
                         )}
                       </div>

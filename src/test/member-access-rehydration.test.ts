@@ -49,6 +49,7 @@ describe("member access rehydration", () => {
     const snapshot = buildMemberAccessSnapshot({
       communities: [community],
       offersByCommunity: { [community.id]: [freeOffer] },
+      memberships: [{ communityId: community.id, joinedAt: "2026-05-14T10:00:00.000Z" }],
       entitlements: [
         {
           offer_id: freeOffer.id,
@@ -64,6 +65,8 @@ describe("member access rehydration", () => {
     if (!subscription) throw new Error("La souscription membre n’a pas été reconstruite.");
     expect(snapshot.unlockedOfferIds).toEqual([freeOffer.id]);
     expect(subscription.companyId).toBe(community.id);
+    expect(subscription.creatorId).toBe(community.ownerUid);
+    expect(subscription.subscribedAt).toBe("2026-05-14T10:00:00.000Z");
     expect(subscription.unlockedProductIds).toEqual([freeOffer.id]);
     expect(subscription.courses?.[0]?.title).toBe("Cours retrouvé après reload");
     expect(subscription.ebooks?.[0]?.title).toBe("Fichier retrouvé après reload");

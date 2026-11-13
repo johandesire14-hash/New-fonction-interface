@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EnterpriseMemberView } from "@/mansa/components/dashboard/EnterpriseMemberView";
 import { getSavedSubscriptions } from "@/mansa/utils/subscriptionsStorage";
@@ -8,11 +8,13 @@ const {
   persistFreeMemberEntitlementMock,
   subscribeToCompanyOffersMock,
   getMemberProductsByIdsMock,
+  fetchPublicCreatorProfileIdentityMock,
 } = vi.hoisted(() => ({
   fetchMemberCommunitiesMock: vi.fn().mockResolvedValue(["company-member-apps-test"]),
   persistFreeMemberEntitlementMock: vi.fn().mockResolvedValue(undefined),
   subscribeToCompanyOffersMock: vi.fn(),
   getMemberProductsByIdsMock: vi.fn().mockResolvedValue([]),
+  fetchPublicCreatorProfileIdentityMock: vi.fn(),
 }));
 
 vi.mock("@/mansa/services/supabaseCommunityService", async (importOriginal) => ({
@@ -27,11 +29,21 @@ vi.mock("@/mansa/services/dbService", async (importOriginal) => ({
   getMemberProductsByIds: getMemberProductsByIdsMock,
 }));
 
+vi.mock("@/mansa/services/supabaseProfileService", async (importOriginal) => ({
+  ...(await importOriginal()),
+  fetchPublicCreatorProfileIdentity: fetchPublicCreatorProfileIdentityMock,
+}));
+
 const companyId = "company-member-apps-test";
 const freeProductId = "offer-free-apps-test";
 
 beforeEach(() => {
   localStorage.clear();
+  fetchPublicCreatorProfileIdentityMock.mockResolvedValue({
+    uid: "creator-public-test",
+    displayName: "Awa Bah",
+    handle: "awa-bah",
+  });
   subscribeToCompanyOffersMock.mockImplementation((_companyId, callback) => {
     callback([
       {
@@ -49,6 +61,64 @@ beforeEach(() => {
       },
     ]);
     return () => {};
+  });
+});
+
+describe("métadonnées publiques de l’entreprise", () => {
+  const subscription = {
+    id: "sub-company-public-test",
+    companyId: "company-public-test",
+    creatorId: "creator-public-test",
+    companyName: "Entreprise test",
+    productName: "Adhésion test",
+    priceDisplay: "Gratuit",
+    status: "active" as const,
+    subscribedAt: "2026-05-14T10:00:00.000Z",
+    hasJoined: true,
+    includedApps: ["dashboard", "support"],
+    telegramChannels: [],
+  };
+
+  it("montre au membre le handle actuel du créateur et la date réelle d’adhésion", async () => {
+    render(
+      <EnterpriseMemberView
+        lang="fr"
+        user={{ uid: "member-public-test", name: "Membre test", email: "member@example.test" }}
+        subscription={subscription}
+      />,
+    );
+
+    expect(await screen.findByText("@awa-bah")).toBeInTheDocument();
+    const joinedAt = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(
+      new Date(subscription.subscribedAt),
+    );
+    expect(screen.getByText(`Membre depuis ${joinedAt}`)).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("mansa_profile_updated", {
+          detail: {
+            uid: "creator-public-test",
+            displayName: "Awa Bah",
+            handle: "@awa-bah-mis-a-jour",
+          },
+        }),
+      );
+    });
+    expect(await screen.findByText("@awa-bah-mis-a-jour")).toBeInTheDocument();
+  });
+
+  it("masque la date d’adhésion au créateur lui-même", async () => {
+    render(
+      <EnterpriseMemberView
+        lang="fr"
+        user={{ uid: "creator-public-test", name: "Awa Bah", email: "creator@example.test" }}
+        subscription={subscription}
+      />,
+    );
+
+    expect(await screen.findByText("@awa-bah")).toBeInTheDocument();
+    expect(screen.queryByText(/^Membre depuis/)).not.toBeInTheDocument();
   });
 });
 
@@ -89,20 +159,29 @@ describe("applications d’une offre gratuite dans l’espace membre", () => {
       <EnterpriseMemberView
         lang="fr"
         user={{ uid: "member-test", name: "Membre test", email: "member@example.test" }}
-        subscription={{
-          id: `sub-${companyId}-member-test`,
-          companyId,
-          companyName: "Communauté test",
-          productName: "Produit gratuit test",
-          productId: freeProductId,
-          status: "active",
-          hasJoined: true,
-          includedApps: ["dashboard", "support", "Telegram", "Discord", "Fichiers", "Cours & formations"],
-          unlockedProductIds: [freeProductId],
-          purchasedOfferIds: [freeProductId],
-          hasPaidOffer: false,
-          telegramChannels: [],
-        } as any}
+        subscription={
+          {
+            id: `sub-${companyId}-member-test`,
+            companyId,
+            companyName: "Communauté test",
+            productName: "Produit gratuit test",
+            productId: freeProductId,
+            status: "active",
+            hasJoined: true,
+            includedApps: [
+              "dashboard",
+              "support",
+              "Telegram",
+              "Discord",
+              "Fichiers",
+              "Cours & formations",
+            ],
+            unlockedProductIds: [freeProductId],
+            purchasedOfferIds: [freeProductId],
+            hasPaidOffer: false,
+            telegramChannels: [],
+          } as any
+        }
       />,
     );
 
@@ -134,19 +213,21 @@ describe("applications d’une offre gratuite dans l’espace membre", () => {
       <EnterpriseMemberView
         lang="fr"
         user={{ uid: "member-test", name: "Membre test", email: "member@example.test" }}
-        subscription={{
-          id: `sub-${companyId}-member-test`,
-          companyId,
-          companyName: "Communauté test",
-          productName: "Adhésion membre",
-          status: "active",
-          hasJoined: true,
-          includedApps: ["dashboard", "support"],
-          unlockedProductIds: [],
-          purchasedOfferIds: [],
-          hasPaidOffer: false,
-          telegramChannels: [],
-        } as any}
+        subscription={
+          {
+            id: `sub-${companyId}-member-test`,
+            companyId,
+            companyName: "Communauté test",
+            productName: "Adhésion membre",
+            status: "active",
+            hasJoined: true,
+            includedApps: ["dashboard", "support"],
+            unlockedProductIds: [],
+            purchasedOfferIds: [],
+            hasPaidOffer: false,
+            telegramChannels: [],
+          } as any
+        }
       />,
     );
 

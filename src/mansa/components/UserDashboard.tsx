@@ -112,6 +112,7 @@ const PartnersView = React.lazy(() =>
 );
 import { AccountSettingsModal } from "./common/AccountSettingsModal";
 import { UserProfileView } from "./common/UserProfileView";
+import { AnimatedNumber } from "./common/AnimatedNumber";
 import { TelegramIcon, DiscordIcon } from "./dashboard/ConnectedAppsView";
 const ConnectedAppsView = React.lazy(() =>
   import("./dashboard/ConnectedAppsView").then((m) => ({ default: m.ConnectedAppsView })),
@@ -1068,6 +1069,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     const previewSub: EnterpriseSubscription = {
       id: `preview-${compId}`,
       companyId: compId,
+      ...(enterprise.creatorId ? { creatorId: enterprise.creatorId } : {}),
       companyName: compName,
       companyLogo: enterprise.companyLogo || "",
       companyBanner: enterprise.bannerUrl || "",
@@ -1125,6 +1127,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     const ownerCommunitySub: EnterpriseSubscription = {
       id: `owner-community-${company.id}`,
       companyId: company.id,
+      creatorId: company.ownerUid || user?.uid,
       companyName: company.name,
       companyInitials: company.logoInitials || company.name.slice(0, 2).toUpperCase(),
       ...(company.companyLogo ? { companyLogo: company.companyLogo } : {}),
@@ -2968,7 +2971,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                           </div>
                           <div className="flex items-baseline gap-3">
                             <div className="dashboard-data-number text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white break-all sm:break-normal">
-                              {formatCurrency(activeBalance, currency)}
+                              <AnimatedNumber value={activeBalance} currency={currency} />
                             </div>
                           </div>
                         </div>
@@ -3057,7 +3060,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1.5 font-mono text-base sm:text-lg font-bold text-zinc-200">
-                            <span>{formatCurrency(activeBalance, currency)}</span>
+                            <AnimatedNumber value={activeBalance} currency={currency} />
                             <ChevronRight className="size-3.5 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
                           </div>
                         </div>
