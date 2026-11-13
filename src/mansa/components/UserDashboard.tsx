@@ -3173,7 +3173,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
             {/* VIEW: PRODUITS (Matching exact UI of Image 1) */}
             {activeNav === "produits" && (
-              <div className="max-w-7xl mx-auto space-y-5">
+              <div className="mx-auto flex min-h-full min-w-0 w-full max-w-7xl flex-col gap-5">
                 {/* Header: Title, Visibility Filter Pill, and Action Buttons */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-3">
@@ -3338,8 +3338,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 </div>
 
                 {/* Products Table matching screenshot */}
-                <div className="w-full rounded-2xl border border-white/[0.08] bg-[#0c0d0e] overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto w-full">
+                <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col rounded-2xl border border-white/[0.08] bg-[#0c0d0e] overflow-hidden shadow-sm">
+                  <div className="min-h-0 min-w-0 w-full flex-1 overflow-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       {/* Header Row */}
                       <thead>
@@ -3585,7 +3585,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               {/* Applications incluses */}
                               <td className="py-4 px-4">
                                 {(product.includedApps || []).length > 0 ? (
-                                  <div className="flex max-w-[260px] flex-wrap items-center gap-1.5">
+                                  <div className="flex max-w-[260px] flex-wrap items-center gap-1 pl-1">
                                     {product.includedApps.map((app, appIndex) => {
                                       const normalizedApp = app.toLowerCase();
                                       const appIcon = normalizedApp.includes("telegram") ? (
@@ -3614,10 +3614,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                         <span
                                           key={`${product.id}-app-${appIndex}`}
                                           title={app}
-                                          className="inline-flex items-center gap-1 rounded-md border border-blue-400/20 bg-blue-400/10 px-2 py-1 text-[10px] font-medium text-blue-100"
+                                          className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-300"
                                         >
                                           {appIcon}
-                                          <span>{app}</span>
+                                          <span className="sr-only">{app}</span>
                                         </span>
                                       );
                                     })}
@@ -3754,7 +3754,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   </div>
 
                   {/* Bottom Pagination matching screenshot 1 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-white/[0.08] text-xs text-zinc-400">
+                  <div className="flex shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-white/[0.08] text-xs text-zinc-400">
                     <div>
                       <span>
                         1-{contextProducts.length} de {contextProducts.length} résultats
