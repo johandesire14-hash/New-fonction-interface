@@ -4010,14 +4010,22 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   <DashboardProductsSkeleton />
                 </div>
               ) : (
-                <AssistanceView
-                  key={activeWorkspaceId}
-                  lang={lang}
-                  activeCompany={activeCompany}
-                  companies={companies}
-                  isPersonalWorkspace={activeWorkspaceId === "personnel"}
-                  onNavigateToClients={() => switchTab("clients")}
-                />
+                <React.Suspense
+                  fallback={
+                    <div className="max-w-7xl mx-auto space-y-5">
+                      <DashboardProductsSkeleton />
+                    </div>
+                  }
+                >
+                  <AssistanceView
+                    key={activeWorkspaceId}
+                    lang={lang}
+                    activeCompany={activeCompany}
+                    companies={companies}
+                    isPersonalWorkspace={activeWorkspaceId === "personnel"}
+                    onNavigateToClients={() => switchTab("clients")}
+                  />
+                </React.Suspense>
               ))}
 
             {/* VIEW: AFFILIÉS */}
