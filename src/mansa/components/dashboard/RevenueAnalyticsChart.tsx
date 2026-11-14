@@ -1161,8 +1161,8 @@ export const RevenueAnalyticsChart: React.FC<RevenueAnalyticsChartProps> = ({
                         : "country"
                     }`
                   : lang === "fr"
-                  ? "Données réelles"
-                  : "Live Data"}
+                  ? ""
+                  : ""}
               </span>
             </h4>
             <p className="text-[11px] text-zinc-400 mt-1">
