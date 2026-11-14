@@ -788,6 +788,44 @@ html:not(.dark) .mansa-palette:not(:has(.afhub-home)) textarea::placeholder {
   color: var(--mansa-light-muted) !important;
 }
 
+/* Light mode CTAs must remain visually prominent against white surfaces. */
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-primary,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-secondary,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-emerald-600"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-emerald-500"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-blue-600"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-purple-600"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-[#00D26A"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-[#3ddc84"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-[#0055ff"] {
+  background-color: #00b85a !important;
+  border-color: #008f46 !important;
+  color: #000000 !important;
+  box-shadow: 0 2px 8px rgba(0, 143, 70, 0.22) !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-primary:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-secondary:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-emerald-"]:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-blue-"]:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-purple-"]:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-[#00D26A"]:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-[#3ddc84"]:hover,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-[#0055ff"]:hover {
+  background-color: #00994b !important;
+  border-color: #00783b !important;
+  color: #000000 !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-primary:focus-visible,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-secondary:focus-visible,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-emerald-"]:focus-visible,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-blue-"]:focus-visible,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) button[class*="bg-purple-"]:focus-visible {
+  outline: 3px solid rgba(0, 143, 70, 0.32);
+  outline-offset: 2px;
+}
+
 /* Light mode heading rule: titles and subtitles are always pure black. */
 html:not(.dark) .mansa-palette:not(:has(.afhub-home)) :is(h1, h2, h3, h4, h5, h6),
 html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [role="heading"],
