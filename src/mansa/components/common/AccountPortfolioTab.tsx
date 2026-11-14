@@ -86,7 +86,8 @@ export const AccountPortfolioTab: React.FC<AccountPortfolioTabProps> = ({
             type="button"
             onClick={() => setIsWithdrawalOpen(true)}
             disabled={balance.availableBalance < minAmount}
-            className="flex items-center gap-2 rounded-xl bg-[#00D26A] px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-pressed="false"
+            className="flex items-center gap-2 rounded-xl bg-[#00D26A] px-4 py-2 text-xs font-bold text-black transition-colors hover:bg-emerald-400 active:scale-95 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:opacity-100"
           >
             <ArrowUpRight className="size-4" />
             Demander un retrait

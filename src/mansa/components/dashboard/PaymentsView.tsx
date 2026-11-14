@@ -533,7 +533,9 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
 
           <button
             onClick={handleOpenWithdrawalDialog}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all cursor-pointer shadow-lg shadow-emerald-500/20"
+            disabled={balance.availableBalance <= 0}
+            aria-pressed="false"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black text-xs font-bold transition-all cursor-pointer shadow-lg shadow-emerald-500/20 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:shadow-none"
           >
             <ArrowUpRight className="size-4" />
             <span>Demander un retrait</span>
@@ -1007,7 +1009,9 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
               </div>
               <button
                 onClick={handleOpenWithdrawalDialog}
-                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                disabled={balance.availableBalance <= 0}
+                aria-pressed="false"
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-black text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 disabled:shadow-none"
               >
                 <ArrowUpRight className="size-4" />
                 <span>Demander un retrait</span>

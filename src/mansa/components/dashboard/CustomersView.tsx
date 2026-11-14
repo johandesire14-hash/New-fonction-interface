@@ -1017,7 +1017,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           className="fixed bottom-5 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-950/95 px-4 py-3 text-sm font-semibold text-emerald-100 shadow-2xl shadow-black/40 animate-in fade-in slide-in-from-bottom-2"
         >
           <CheckCircle2 className="size-5 shrink-0 text-emerald-400" />
-          Message privé envoyé avec succès.
+          Message envoyé avec succès.
         </div>
       )}
       {toast && !messageSuccess && (

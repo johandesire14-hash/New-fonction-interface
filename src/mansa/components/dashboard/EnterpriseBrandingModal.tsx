@@ -182,9 +182,9 @@ export const EnterpriseBrandingModal: React.FC<EnterpriseBrandingModalProps> = (
     setIsSaving(true);
     setSaveError(null);
     const cleanedSocialLinks = Object.fromEntries(
-      Object.entries(socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => !value || /^https:\/\/i.test(value)),
+      Object.entries(socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => !value || /^https:\/\//i.test(value)),
     );
-    const invalidSocialLink = Object.entries(socialLinks).find(([, value]) => value.trim() && !/^https:\/\/i.test(value.trim()));
+    const invalidSocialLink = Object.entries(socialLinks).find(([, value]) => value.trim() && !/^https:\/\//i.test(value.trim()));
     if (invalidSocialLink) {
       setSaveError("Les liens sociaux doivent commencer par https://.");
       setIsSaving(false);

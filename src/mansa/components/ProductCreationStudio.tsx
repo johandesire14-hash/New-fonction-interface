@@ -991,31 +991,6 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
               </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* SECTION D'UPLOAD DE FICHIERS / DOCUMENTS (POUR E-BOOK, GUIDE & DIGITALS) */}
-            {/* ========================================================================= */}
-            {(productType === "ebook" || productType === "digital") && (
-              <div className="space-y-4 pt-3 border-t border-white/[0.08]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <Upload className="size-4 text-[#00D26A]" />
-                      <span>Fichiers & Documents à Télécharger</span>
-                    </h3>
-                    <p className="text-[11px] text-zinc-400 mt-0.5">
-                      {selectedApps.some((app) =>
-                        ["Fichiers", "Fichiers & Documents", "Téléchargement instantané"].includes(
-                          app,
-                        ),
-                      )
-                        ? "Ajoutez les fichiers qui seront disponibles dans l’application Fichiers de cette offre."
-                        : productType === "ebook"
-                          ? "Ajoutez votre e-book ou guide (PDF, ePub) téléchargeable après achat ou en accès gratuit."
-                          : "Ajoutez les fichiers numériques, guides ou documents inclus dans cette offre."}
-                    </p>
-                  </div>
-                </div>
-
               {/* Apps checklist / selector */}
             <div className="space-y-2.5 pt-4 border-t border-white/[0.08]">
               <div className="flex items-center justify-between">
