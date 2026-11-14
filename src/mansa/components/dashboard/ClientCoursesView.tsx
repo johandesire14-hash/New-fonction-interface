@@ -131,7 +131,7 @@ export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
           <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-200">
-                <Sparkles className="size-3" /> Mon apprentissage
+                <Sparkles className="size-3" />
               </div>
               <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
                 Continuez à progresser
