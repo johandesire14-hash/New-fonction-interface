@@ -3933,7 +3933,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                       <h2 className="text-base font-bold leading-snug text-white">{offer.title}</h2>
                       <div className="space-y-1 border-b border-white/10 pb-3">
                         <span className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                          {offer.pricingType === "free" ? "Accès Libre" : "Tarif Officiel"}
+                          {offer.pricingType === "free" ? "Gratuit" : "Tarif Officiel"}
                         </span>
                         <div className="flex items-baseline gap-2">
                           <span className="font-mono text-3xl font-black text-white">

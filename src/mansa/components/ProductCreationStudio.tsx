@@ -354,7 +354,7 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
     const symbol = currencyConfig.symbol;
     const billingText =
       pricingType === "free"
-        ? "Gratuit (Accès libre)"
+        ? "Gratuit"
         : billingCycle === "monthly"
           ? `${numericPrice} ${symbol} par mois`
           : billingCycle === "yearly"
@@ -2030,7 +2030,7 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
                     {/* Price Header */}
                     <div className="space-y-1 pb-3 border-b border-white/10">
                       <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 block">
-                        {pricingType === "free" ? "Accès Libre" : "Tarif Officiel"}
+                        {pricingType === "free" ? "Gratuit" : "Tarif Officiel"}
                       </span>
                       <div className="flex items-baseline gap-2">
                         <span className="text-3xl font-black text-white font-mono">
