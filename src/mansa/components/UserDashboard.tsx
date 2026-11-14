@@ -1852,27 +1852,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
         {/* Right Navigation Icons */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Quick Create Product Button - ONLY in creator enterprise workspace */}
-          {isCreatorCompanySelected && (
-            <button
-              onClick={() => {
-                setEditingProduct(null);
-                setIsProductStudioOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-emerald-900/30 min-h-[36px]"
-              title={
-                lang === "fr"
-                  ? "Créer un nouveau produit ou service"
-                  : "Create new product or service"
-              }
-            >
-              <Plus className="size-3.5 stroke-[2.5]" />
-              <span className="hidden sm:inline">
-                {lang === "fr" ? "Créer un produit" : "Create product"}
-              </span>
-            </button>
-          )}
-
           {/* Refresh Data with Skeleton simulator */}
           <button
             onClick={handleRefreshData}
