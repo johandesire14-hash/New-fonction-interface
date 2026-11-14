@@ -17,6 +17,7 @@
 - Do not add new user-facing text, badges, labels, banners, icons, cards, or other UI elements unless the user explicitly requests them. Before proposing any such addition, submit a concise request explaining where it will appear, what it will contain, and why; without explicit approval, add nothing and preserve the existing content.
 - Never display technical messages to users on any page: do not render raw exception or SDK messages, Firebase/network/server details, stack traces, debug output, internal identifiers, or machine validation codes. Keep technical details in logs/authorized observability only and show fixed, clear, contextual user-facing copy or an explicitly approved mapping for known business error codes. Preserve user-readable business validation messages. Apply this to forms, alerts, toasts, upload feedback, API responses, and fallback states; never pass through `error.message`, `err.message`, or a raw server error body.
 - Les logos de marque doivent utiliser le composant BrandLogo avec leurs couleurs officielles ; les icônes d’interface utilisent une bibliothèque cohérente et une couleur cohérente.
+- Lorsqu’une application ou une marque existante est ajoutée — par exemple Facebook, Instagram, Telegram, Discord ou WhatsApp — ne jamais inventer, dessiner ou générer une icône de remplacement : récupérer et réutiliser sa vraie icône officielle depuis une source fiable ou un composant de marque dédié, en respectant ses couleurs et son identité visuelle.
 
 ## Règle permanente — harmonisation des icônes
 
