@@ -105,7 +105,7 @@ export default function MansaRoot({ children }: { children: React.ReactNode }) {
   return (
     <RootErrorBoundary>
       <div
-        className={`mansa-palette min-h-screen${isDark ? " mansa-dark" : ""}`}
+        className={`mansa-palette min-h-screen${isDark ? " mansa-dark" : " mansa-light"}`}
         style={{ minHeight: "100dvh", backgroundColor: isDark ? "#0f1012" : "#ffffff" }}
       >
         <ViewportMetrics />

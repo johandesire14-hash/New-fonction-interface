@@ -13,6 +13,7 @@ export function setAppTheme(theme: AppTheme): void {
   safeStorage.setItem(THEME_STORAGE_KEY, theme);
   if (typeof document !== "undefined") {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("light", theme === "light");
     document.documentElement.style.colorScheme = theme;
   }
   if (typeof window !== "undefined") {

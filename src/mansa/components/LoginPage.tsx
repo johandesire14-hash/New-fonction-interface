@@ -87,7 +87,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#0d0f10] text-[#f2f4f5] flex flex-col items-center justify-center px-4 py-12 selection:bg-[#3ddc84]/30 selection:text-[#3ddc84]">
+    <div className="mansa-login relative min-h-screen w-full bg-[#0d0f10] text-[#f2f4f5] flex flex-col items-center justify-center px-4 py-12 selection:bg-[#3ddc84]/30 selection:text-[#3ddc84]">
       {/* Back button */}
       <button
         onClick={onBackToLanding}

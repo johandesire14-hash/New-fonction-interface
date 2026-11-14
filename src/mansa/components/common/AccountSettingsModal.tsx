@@ -469,7 +469,7 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
 
   const containerContent = (
     <div
-      className={`w-full ${
+      className={`mansa-account-settings w-full ${
         isModal
           ? "max-w-5xl bg-[#111216] border border-white/[0.08] rounded-t-[28px] md:rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[min(680px,92vh)] max-h-[92vh]"
           : "w-full bg-[#111216] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[620px]"

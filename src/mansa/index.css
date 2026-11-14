@@ -584,3 +584,206 @@ html:not(.dark) .mansa-palette {
     padding-inline: 0.65rem;
   }
 }
+
+/* Application light theme. The public landing page keeps its existing palette. */
+html:not(.dark) {
+  --mansa-light-bg: #f5f7fa;
+  --mansa-light-surface: #ffffff;
+  --mansa-light-surface-raised: #eef2f6;
+  --mansa-light-border: rgba(15, 23, 42, 0.12);
+  --mansa-light-text: #17202b;
+  --mansa-light-muted: #64748b;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) {
+  background: var(--mansa-light-bg);
+  color: var(--mansa-light-text);
+}
+
+html:not(.dark) .mansa-dashboard {
+  --dashboard-bg: var(--mansa-light-bg);
+  --dashboard-panel: var(--mansa-light-surface);
+  --dashboard-panel-raised: var(--mansa-light-surface-raised);
+  --dashboard-border: var(--mansa-light-border);
+  --dashboard-border-subtle: rgba(15, 23, 42, 0.08);
+  --dashboard-text: var(--mansa-light-text);
+  --dashboard-muted: var(--mansa-light-muted);
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text);
+}
+
+html:not(.dark) .mansa-dashboard > header,
+html:not(.dark) .mansa-dashboard .dashboard-canvas,
+html:not(.dark) .mansa-dashboard aside,
+html:not(.dark) .mansa-dashboard .mansa-viewport {
+  background: var(--dashboard-bg) !important;
+  color: var(--dashboard-text);
+}
+
+html:not(.dark) .mansa-dashboard .dashboard-panel,
+html:not(.dark) .mansa-dashboard .dashboard-callout,
+html:not(.dark) .mansa-dashboard .dashboard-segmented-control {
+  background: var(--dashboard-panel) !important;
+  border-color: var(--dashboard-border) !important;
+  color: var(--dashboard-text);
+}
+
+html:not(.dark) .mansa-dashboard .dashboard-segmented-control {
+  background: var(--dashboard-panel-raised) !important;
+}
+
+html:not(.dark) .mansa-dashboard [class*="bg-[#0"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#1"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#2"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#11"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#15"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#16"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#17"],
+html:not(.dark) .mansa-dashboard [class*="bg-[#25"] {
+  background-color: var(--dashboard-panel) !important;
+}
+
+html:not(.dark) .mansa-dashboard [class*="border-white"],
+html:not(.dark) .mansa-dashboard [class*="border-[#"] {
+  border-color: var(--dashboard-border) !important;
+}
+
+html:not(.dark) .mansa-dashboard [class*="text-white"],
+html:not(.dark) .mansa-dashboard [class*="text-zinc-"],
+html:not(.dark) .mansa-dashboard [class*="text-[#eeeeee"],
+html:not(.dark) .mansa-dashboard [class*="text-[#f2f4f5"],
+html:not(.dark) .mansa-dashboard [class*="text-[#9ba3aa"] {
+  color: var(--dashboard-text) !important;
+}
+
+html:not(.dark) .mansa-dashboard [class*="text-zinc-400"],
+html:not(.dark) .mansa-dashboard [class*="text-zinc-500"],
+html:not(.dark) .mansa-dashboard [class*="text-zinc-600"],
+html:not(.dark) .mansa-dashboard [class*="text-[#9ba3aa"] {
+  color: var(--dashboard-muted) !important;
+}
+
+html:not(.dark) .mansa-account-settings {
+  color: var(--mansa-light-text);
+}
+
+html:not(.dark) .mansa-account-settings [class*="bg-[#0"],
+html:not(.dark) .mansa-account-settings [class*="bg-[#1"],
+html:not(.dark) .mansa-account-settings [class*="bg-[#2"],
+html:not(.dark) .mansa-account-settings [class*="bg-white/[0.0"],
+html:not(.dark) .mansa-account-settings [class*="bg-white/10"] {
+  background-color: var(--mansa-light-surface) !important;
+}
+
+html:not(.dark) .mansa-account-settings [class*="border-white"] {
+  border-color: var(--mansa-light-border) !important;
+}
+
+html:not(.dark) .mansa-account-settings [class*="text-white"],
+html:not(.dark) .mansa-account-settings [class*="text-zinc-200"],
+html:not(.dark) .mansa-account-settings [class*="text-zinc-300"] {
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-account-settings [class*="text-zinc-400"],
+html:not(.dark) .mansa-account-settings [class*="text-zinc-500"] {
+  color: var(--mansa-light-muted) !important;
+}
+
+html:not(.dark) .mansa-login {
+  background: var(--mansa-light-bg) !important;
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-login [class*="bg-[#15181b"],
+html:not(.dark) .mansa-login [class*="bg-[#1b1f23"] {
+  background-color: var(--mansa-light-surface) !important;
+}
+
+html:not(.dark) .mansa-login [class*="border-white"] {
+  border-color: var(--mansa-light-border) !important;
+}
+
+html:not(.dark) .mansa-login [class*="text-[#f2f4f5"],
+html:not(.dark) .mansa-login [class*="text-white"] {
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-login [class*="text-[#9ba3aa"] {
+  color: var(--mansa-light-muted) !important;
+}
+
+html:not(.dark) .mansa-login input {
+  background: var(--mansa-light-surface-raised) !important;
+  color: var(--mansa-light-text) !important;
+  border-color: var(--mansa-light-border) !important;
+}
+
+html:not(.dark) .mansa-login input::placeholder {
+  color: var(--mansa-light-muted) !important;
+}
+
+html:not(.dark) .mansa-login a:hover,
+html:not(.dark) .mansa-login button:hover {
+  color: var(--mansa-light-text);
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) svg {
+  color: #334155;
+}
+
+/* Catch remaining hard-coded dark surfaces in secondary authenticated views. */
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#0"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#1"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#2"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#11"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#15"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#16"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#17"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="bg-[#25"] {
+  background-color: var(--mansa-light-surface) !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="border-white"] {
+  border-color: var(--mansa-light-border) !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#eeeeee"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#f2f4f5"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-200"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-300"] {
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#9ba3aa"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-400"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-500"] {
+  color: var(--mansa-light-muted) !important;
+}
+
+/* Light mode contrast: no white-on-light labels or invisible interface icons. */
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-white"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-white/"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#fff"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#eee"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#f2f4f5"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#d7dce0"] {
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-400"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-500"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-zinc-600"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#9ba3aa"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="text-[#aab2b9"] {
+  color: var(--mansa-light-muted) !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) svg {
+  color: #334155 !important;
+}
+
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) input::placeholder,
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) textarea::placeholder {
+  color: var(--mansa-light-muted) !important;
+}
