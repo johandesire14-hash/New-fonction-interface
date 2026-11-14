@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Search,
   X,
+  ChevronLeft,
   DollarSign,
   MapPin,
   Store,
@@ -113,6 +114,11 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [appTheme, setAppThemeState] = useState<AppTheme>(() => getAppTheme());
   const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(isModal);
+
+  useEffect(() => {
+    if (isModal) setMobileMenuOpen(true);
+  }, [isModal]);
 
   useEffect(() => {
     const syncTheme = (event?: Event) => {
@@ -465,63 +471,48 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
     <div
       className={`w-full ${
         isModal
-          ? "max-w-5xl bg-[#111216] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[680px] max-h-[92vh]"
+          ? "max-w-5xl bg-[#111216] border border-white/[0.08] rounded-t-[28px] md:rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[min(680px,92vh)] max-h-[92vh]"
           : "w-full bg-[#111216] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[620px]"
       }`}
     >
-      {/* MOBILE TOP TAB BAR (< md) */}
-      <div className="md:hidden w-full shrink-0 bg-[#0e0f12] border-b border-white/[0.08] p-3 space-y-2 select-none">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-white tracking-tight">Paramètres du compte</h2>
-          {isModal && onClose && (
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <X className="size-4" />
+      {/* MOBILE SETTINGS SHEET (< md) */}
+      <div className={`${mobileMenuOpen ? "flex" : "hidden"} md:hidden min-h-0 flex-1 flex-col bg-[#111216] select-none`}>
+        <div className="flex justify-center pt-3"><span className="h-1.5 w-16 rounded-full bg-white/15" aria-hidden="true" /></div>
+        <div className="flex items-center justify-between px-7 pb-4 pt-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-full border border-white/10 bg-[#252830] text-sm font-bold text-white">
+              {user?.avatarInitials || user?.name?.slice(0, 2).toUpperCase() || "U"}
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-white">{user.name}</p>
+              <button type="button" onClick={() => { setActiveTab("profil"); setMobileMenuOpen(false); }} className="text-sm text-zinc-400 hover:text-white">Voir le profil</button>
+            </div>
+          </div>
+          {isModal && onClose && <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-full p-2 text-zinc-400 hover:bg-white/10 hover:text-white"><X className="size-5" /></button>}
+        </div>
+        <div className="mx-7 border-t border-white/10" />
+        <nav className="min-h-0 flex-1 overflow-y-auto px-7 py-2">
+          {[
+            { id: "notifications" as AccountSettingsTab, label: "Notifications", icon: Bell },
+            { id: "resolution" as AccountSettingsTab, label: "Centre de résolution", icon: AlertCircle },
+            { id: "commandes" as AccountSettingsTab, label: "Mon activité", icon: Bookmark },
+            { id: "profil" as AccountSettingsTab, label: "Paramètres du profil", icon: User },
+          ].map(({ id, label, icon: Icon }) => (
+            <button key={id} type="button" onClick={() => { setActiveTab(id); setMobileMenuOpen(false); }} className="flex min-h-14 w-full items-center gap-4 text-left text-[17px] text-white transition-colors hover:text-emerald-300">
+              <Icon className="size-6 shrink-0 text-zinc-200" strokeWidth={1.8} /><span>{label}</span>
             </button>
-          )}
-        </div>
-
-        {/* Horizontal scrollable pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-          {navItems.map((item) => {
+          ))}
+          <div className="my-2 border-t border-white/10" />
+          {navItems.filter((item) => ["invitations", "comptes_connectes", "securite", "paiements", "portefeuille", "verifications"].includes(item.id)).map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as AccountSettingsTab)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                  isActive
-                    ? "bg-[#00D26A] text-black shadow-md font-bold"
-                    : "bg-[#181a20] text-zinc-300 hover:bg-[#22252c] hover:text-white border border-white/5"
-                }`}
-              >
-                <Icon className={`size-3.5 ${isActive ? "text-black" : "text-zinc-400"}`} />
-                <span>{item.label}</span>
-              </button>
-            );
+            return <button key={item.id} type="button" onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }} className="flex min-h-14 w-full items-center gap-4 text-left text-[17px] text-white transition-colors hover:text-emerald-300"><Icon className="size-6 shrink-0 text-zinc-200" strokeWidth={1.8} /><span>{item.fullLabel || item.label}</span></button>;
           })}
-          <button
-            type="button"
-            onClick={onLogout}
-            disabled={!onLogout}
-            className="flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-red-900/30 bg-[#331414] px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-[#421a1a] disabled:opacity-50"
-          >
-            <LogOut className="size-3.5 shrink-0" />
-            <span>{lang === "fr" ? "Déconnexion" : "Log out"}</span>
+          <button type="button" onClick={() => setAppTheme(appTheme === "dark" ? "light" : "dark")} className="flex min-h-14 w-full items-center gap-4 text-left text-[17px] text-white transition-colors hover:text-emerald-300">
+            {appTheme === "dark" ? <Moon className="size-6 text-zinc-200" strokeWidth={1.8} /> : <Sun className="size-6 text-zinc-200" strokeWidth={1.8} />}<span>Apparence</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setIsDeleteAccountConfirmOpen(true)}
-            disabled={!onDeleteAccount}
-            className="flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:bg-red-900/50 disabled:opacity-50"
-          >
-            <Trash2 className="size-3.5 shrink-0" />
-            <span>{lang === "fr" ? "Supprimer mon compte" : "Delete account"}</span>
-          </button>
-        </div>
+        </nav>
+        <div className="mx-7 border-t border-white/10" />
+        <div className="px-7 pb-6 pt-2"><button type="button" onClick={onLogout} disabled={!onLogout} className="flex min-h-14 w-full items-center gap-4 text-left text-[17px] text-white transition-colors hover:text-red-300 disabled:opacity-50"><LogOut className="size-6 text-zinc-200" strokeWidth={1.8} /><span>{lang === "fr" ? "Se déconnecter" : "Log out"}</span></button></div>
       </div>
 
       {/* DESKTOP LEFT SIDEBAR (>= md) */}
@@ -613,10 +604,11 @@ export const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
       </aside>
 
       {/* RIGHT MAIN PANEL */}
-      <main className="flex-1 bg-[#111216] flex flex-col overflow-hidden">
+      <main className={`${mobileMenuOpen ? "hidden md:flex" : "flex"} flex-1 bg-[#111216] flex-col overflow-hidden`}>
         {/* Top Header Bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] shrink-0">
           <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setMobileMenuOpen(true)} className="md:hidden rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white" aria-label="Retour aux paramètres"><ChevronLeft className="size-4" /></button>
             <h1 className="text-base font-bold text-white capitalize">
               {activeTab === "profil" && "Profil"}
               {activeTab === "invitations" && "Invitations"}
