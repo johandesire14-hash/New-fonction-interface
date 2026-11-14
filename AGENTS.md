@@ -17,3 +17,11 @@
 - Do not add new user-facing text, badges, labels, banners, icons, cards, or other UI elements unless the user explicitly requests them. Before proposing any such addition, submit a concise request explaining where it will appear, what it will contain, and why; without explicit approval, add nothing and preserve the existing content.
 - Never display technical messages to users on any page: do not render raw exception or SDK messages, Firebase/network/server details, stack traces, debug output, internal identifiers, or machine validation codes. Keep technical details in logs/authorized observability only and show fixed, clear, contextual user-facing copy or an explicitly approved mapping for known business error codes. Preserve user-readable business validation messages. Apply this to forms, alerts, toasts, upload feedback, API responses, and fallback states; never pass through `error.message`, `err.message`, or a raw server error body.
 - Les logos de marque doivent utiliser le composant BrandLogo avec leurs couleurs officielles ; les icônes d’interface utilisent une bibliothèque cohérente et une couleur cohérente.
+
+## Règle permanente — harmonisation des icônes
+
+- Toutes les nouvelles icônes d’interface et toutes les icônes modifiées doivent suivre la teinte neutre claire utilisée dans le menu des paramètres du compte : `var(--mansa-icon-color)` (`oklch(0.91 0.01 285)`).
+- Ne pas réintroduire de couleurs différentes pour les icônes fonctionnelles, de navigation, de formulaire, de tableau de bord ou de modale, sauf si une couleur est explicitement nécessaire pour exprimer un état métier clairement identifié.
+- Conserver les couleurs officielles des logos et icônes de marques (par exemple Telegram et Discord) lorsqu’elles sont rendues par un composant de marque dédié ou par des remplissages SVG explicites.
+- Réutiliser les icônes Lucide/Tabler existantes et le token global plutôt que de créer une nouvelle couleur ou une nouvelle bibliothèque d’icônes.
+- Après toute modification d’icône, vérifier au minimum le rendu desktop et mobile ainsi que les états actif, survolé, désactivé et erreur concernés. Ne pas modifier le comportement fonctionnel pour appliquer cette règle visuelle.
