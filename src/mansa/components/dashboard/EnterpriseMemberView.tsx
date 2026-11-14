@@ -114,6 +114,7 @@ import {
 } from "../../utils/companyStorage";
 import {
   fetchMemberCommunities,
+  fetchCommunityMemberCount,
   joinCommunityRpc,
 } from "../../services/supabaseCommunityService";
 import {
@@ -299,7 +300,8 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
     });
   }, [companyId]);
 
-  const [, setMemberCountRefreshTrigger] = useState(0);
+  const [memberCountRefreshTrigger, setMemberCountRefreshTrigger] = useState(0);
+  const [supabaseMemberCount, setSupabaseMemberCount] = useState<number | null>(null);
   const companyRecord = (creatorCompanies || []).find(
     (company) => company && (company.id === companyId || company.companyId === companyId),
   );
@@ -308,10 +310,22 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
       (currentSub as EnterpriseSubscription & { membersCount?: number }).membersCount ??
       0,
   );
-  const companyMemberCount = Math.max(
+  const fallbackMemberCount = Math.max(
     Number.isFinite(savedMemberCount) ? savedMemberCount : 0,
     getLocalCompanyMemberCount(companyId, currentSub.companyName),
   );
+  const companyMemberCount = supabaseMemberCount ?? fallbackMemberCount;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setSupabaseMemberCount(null);
+    void fetchCommunityMemberCount(companyId).then((count) => {
+      if (!cancelled) setSupabaseMemberCount(count);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, memberCountRefreshTrigger]);
 
   React.useEffect(() => {
     const refreshMemberCount = (event?: Event) => {
@@ -2452,12 +2466,8 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
             onClick={() => {
               setActiveTab("accueil");
               setCompanyTab("accueil");
-            }}
-            onDoubleClick={() => {
-              if (isCompact) {
-                setIsMobileCompanyNavOpen(false);
-                setIsMobileSidebarOpen(false);
-              }
+              if (isMobile || isCompact) setIsMobileCompanyNavOpen(false);
+              if (isMobile || isCompact) setIsMobileSidebarOpen(false);
             }}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer min-h-[44px] ${
               activeTab === "accueil" && companyTab === "accueil"
