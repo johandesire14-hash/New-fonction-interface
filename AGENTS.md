@@ -33,6 +33,8 @@
 
 3.3. Les modifications visuelles ne doivent pas modifier le comportement fonctionnel existant sans demande explicite.
 
+3.4. Ne pas réintroduire le fin contour bleu natif au focus sur les boutons. Les onglets « Accueil », « Produits » et « Avis » de l’espace membre ne doivent afficher ni contour bleu ni soulignement bleu à l’état actif ; l’onglet actif est indiqué par son texte blanc en gras. Tout indicateur de focus clavier ajouté doit utiliser une couleur autre que le bleu, cohérente avec le système visuel Mansa.
+
 ## Article 4 — Messages et erreurs
 
 4.1. Aucun message technique ne doit être affiché à l’utilisateur.
