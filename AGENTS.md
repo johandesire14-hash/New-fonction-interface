@@ -25,3 +25,12 @@
 - Conserver les couleurs officielles des logos et icônes de marques (par exemple Telegram et Discord) lorsqu’elles sont rendues par un composant de marque dédié ou par des remplissages SVG explicites.
 - Réutiliser les icônes Lucide/Tabler existantes et le token global plutôt que de créer une nouvelle couleur ou une nouvelle bibliothèque d’icônes.
 - Après toute modification d’icône, vérifier au minimum le rendu desktop et mobile ainsi que les états actif, survolé, désactivé et erreur concernés. Ne pas modifier le comportement fonctionnel pour appliquer cette règle visuelle.
+
+## Règle permanente — mode clair et contraste
+
+- Le mode clair doit être traité comme un thème complet : ne jamais modifier uniquement les arrière-plans en laissant les textes ou les icônes blancs.
+- En mode clair, les textes principaux doivent utiliser `var(--mansa-light-text)`, les textes secondaires `var(--mansa-light-muted)` et les icônes d’interface une teinte foncée lisible, par défaut `#334155`.
+- Ne laisser aucune classe `text-white`, `text-[#eeeeee]`, `text-[#f2f4f5]` ou équivalente sur une surface claire, sauf si elle est nécessaire sur un fond suffisamment contrasté et explicitement vérifié.
+- Adapter également les placeholders, bordures, états actifs, survols, focus, états désactivés et messages d’erreur/succès afin de maintenir un contraste lisible.
+- Vérifier visuellement le mode clair sur le dashboard, la connexion, les paramètres, les modales et les écrans secondaires, en desktop et en mobile. Une compilation réussie ne suffit pas.
+- Préserver les couleurs officielles des marques et les couleurs sémantiques d’état lorsqu’elles restent contrastées ; ne pas appliquer la couleur claire des icônes par-dessus leurs remplissages de marque explicites.
