@@ -181,6 +181,15 @@ export const EnterpriseBrandingModal: React.FC<EnterpriseBrandingModalProps> = (
     if (isSaving) return;
     setIsSaving(true);
     setSaveError(null);
+    const cleanedSocialLinks = Object.fromEntries(
+      Object.entries(socialLinks).map(([key, value]) => [key, value.trim()]).filter(([, value]) => !value || /^https:\/\/i.test(value)),
+    );
+    const invalidSocialLink = Object.entries(socialLinks).find(([, value]) => value.trim() && !/^https:\/\/i.test(value.trim()));
+    if (invalidSocialLink) {
+      setSaveError("Les liens sociaux doivent commencer par https://.");
+      setIsSaving(false);
+      return;
+    }
     try {
       const [uploadedBanner, uploadedLogo] = await Promise.all([
         bannerFile
@@ -193,9 +202,7 @@ export const EnterpriseBrandingModal: React.FC<EnterpriseBrandingModalProps> = (
         description: description.trim(),
         companyBanner: uploadedBanner,
         companyLogo: uploadedLogo,
-        socialLinks: Object.fromEntries(
-          Object.entries(socialLinks).filter(([, value]) => value.trim()),
-        ),
+        socialLinks: cleanedSocialLinks,
       });
       setIsSaved(true);
       window.setTimeout(() => {

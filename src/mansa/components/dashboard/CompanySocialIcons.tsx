@@ -22,7 +22,7 @@ const SOCIAL_NETWORKS = [
 export function CompanySocialIcons({ socialLinks }: { socialLinks?: CompanySocialLinks }) {
   const links = SOCIAL_NETWORKS.flatMap(({ key, label, Icon }) => {
     const url = socialLinks?.[key]?.trim();
-    return url ? [{ key, label, Icon, url }] : [];
+    return url && /^https:\/\/i.test(url) ? [{ key, label, Icon, url }] : [];
   });
 
   if (!links.length) return null;
