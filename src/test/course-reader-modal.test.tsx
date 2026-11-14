@@ -16,6 +16,7 @@ const baseProps = {
 
 afterEach(() => {
   vi.clearAllMocks();
+  window.localStorage.clear();
 });
 
 describe("CourseReaderModal", () => {
@@ -122,5 +123,64 @@ describe("CourseReaderModal", () => {
         "https://signed.example/video.mp4",
       ),
     );
+  });
+
+  it("enregistre chaque leçon et termine la formation après la dernière", () => {
+    const onClose = vi.fn();
+    render(
+      <CourseReaderModal
+        {...baseProps}
+        onClose={onClose}
+        progressScopeId="member-progress"
+        course={{
+          id: "course-completion",
+          title: "Formation complète",
+          chapters: [
+            { id: "chapter-one", title: "Première leçon" },
+            { id: "chapter-two", title: "Deuxième leçon" },
+          ],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Suivant" }));
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(
+          "mansa_course_completed_lessons_member-progress_course-completion",
+        ) || "[]",
+      ),
+    ).toEqual(["chapter-one"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Terminer le cours" }));
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(
+          "mansa_course_completed_lessons_member-progress_course-completion",
+        ) || "[]",
+      ),
+    ).toEqual(["chapter-one", "chapter-two"]);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("permet de marquer comme terminé un cours vidéo sans chapitres", () => {
+    render(
+      <CourseReaderModal
+        {...baseProps}
+        course={{
+          id: "course-video-only",
+          title: "Cours vidéo",
+          youtubeUrl: "https://youtu.be/abc123456",
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Marquer comme terminé" }));
+    expect(
+      JSON.parse(
+        window.localStorage.getItem("mansa_course_completed_lessons_course-video-only") || "[]",
+      ),
+    ).toEqual(["course-video-only-video"]);
+    expect(screen.getByRole("button", { name: "Cours terminé" })).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
@@ -15,18 +15,37 @@ import {
   X,
 } from "lucide-react";
 import type { CourseResourceItem, CreatorPlatformOffer } from "../../types";
+import { COURSE_PROGRESS_UPDATED_EVENT, getCourseProgress } from "../../utils/courseProgress";
 
 type CourseRecord = CourseResourceItem & {
-  chapters?: Array<string | { id?: string; title?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
+  chapters?: Array<
+    | string
+    | { id?: string; title?: string; content?: string; videoUrl?: string; videoStorageKey?: string }
+  >;
   chapterContents?: string[];
-  courseModules?: Array<{ id?: string; title?: string; duration?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
-  modules?: Array<{ id?: string; title?: string; duration?: string; content?: string; videoUrl?: string; videoStorageKey?: string }>;
+  courseModules?: Array<{
+    id?: string;
+    title?: string;
+    duration?: string;
+    content?: string;
+    videoUrl?: string;
+    videoStorageKey?: string;
+  }>;
+  modules?: Array<{
+    id?: string;
+    title?: string;
+    duration?: string;
+    content?: string;
+    videoUrl?: string;
+    videoStorageKey?: string;
+  }>;
   coverImage?: string;
   imageUrl?: string;
 };
 
 interface ClientCoursesViewProps {
   companyName: string;
+  progressScopeId?: string;
   loading?: boolean;
   courses: CourseRecord[];
   lockedCourses: Array<{ course: CourseRecord; requiredOffer: CreatorPlatformOffer }>;
@@ -44,14 +63,9 @@ const getCourseLessons = (course: CourseRecord) => {
   return Math.max(1, course.modulesCount || 1);
 };
 
-const getCourseProgress = (course: CourseRecord) => {
-  if (typeof window === "undefined") return 0;
-  const value = Number(localStorage.getItem(`mansa_course_progress_${course.id}`) || 0);
-  return Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0));
-};
-
 export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
   companyName,
+  progressScopeId,
   loading = false,
   courses,
   lockedCourses,
@@ -63,10 +77,15 @@ export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
   const [query, setQuery] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [showLocked, setShowLocked] = useState(false);
+  const [, refreshProgress] = useReducer((version: number) => version + 1, 0);
 
-  const progressMap = useMemo(
-    () => new Map(courses.map((course) => [course.id, getCourseProgress(course)])),
-    [courses],
+  useEffect(() => {
+    window.addEventListener(COURSE_PROGRESS_UPDATED_EVENT, refreshProgress);
+    return () => window.removeEventListener(COURSE_PROGRESS_UPDATED_EVENT, refreshProgress);
+  }, []);
+
+  const progressMap = new Map(
+    courses.map((course) => [course.id, getCourseProgress(course, progressScopeId)]),
   );
   const courseInProgress = courses.find((course) => {
     const progress = progressMap.get(course.id) || 0;
@@ -256,7 +275,7 @@ export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
                         key={course.id}
                         className="group overflow-hidden rounded-2xl border border-white/[0.08] bg-[#10131b] transition hover:-translate-y-0.5 hover:border-indigo-400/40 hover:shadow-xl hover:shadow-indigo-950/20"
                       >
-                        <div className="relative flex h-32 items-end overflow-hidden bg-gradient-to-br from-indigo-500/35 via-blue-500/10 to-[#111522] p-4">
+                        <div className="relative flex h-24 items-end overflow-hidden bg-gradient-to-br from-indigo-500/35 via-blue-500/10 to-[#111522] p-4 sm:h-28">
                           {(course.coverImage || course.imageUrl) && (
                             <img
                               src={course.coverImage || course.imageUrl}
@@ -265,9 +284,6 @@ export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
                             />
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-[#10131b] to-transparent" />
-                          <div className="relative flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-indigo-100">
-                            <BookOpen className="size-3.5" /> Formation
-                          </div>
                           {completed && (
                             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-1 text-[10px] font-bold text-emerald-300">
                               <Check className="size-3" /> Terminé
@@ -278,16 +294,11 @@ export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
                           <h4 className="line-clamp-2 min-h-10 text-sm font-black text-white">
                             {course.title}
                           </h4>
-                          <p className="mt-2 line-clamp-2 min-h-8 text-xs leading-5 text-zinc-400">
+                          <p className="mt-1 line-clamp-2 min-h-8 text-xs leading-5 text-zinc-400">
                             {course.description ||
                               "Formation complète avec leçons et ressources pratiques."}
                           </p>
-                          <div className="mt-4 flex items-center gap-3 text-[11px] text-zinc-500">
-                            <span>{getCourseLessons(course)} leçons</span>
-                            <span>·</span>
-                            <span>{course.duration || "À votre rythme"}</span>
-                          </div>
-                          <div className="mt-4">
+                          <div className="mt-3">
                             <div className="mb-1.5 flex justify-between text-[10px] font-bold">
                               <span className="text-zinc-500">Progression</span>
                               <span className={completed ? "text-emerald-300" : "text-indigo-300"}>
@@ -308,13 +319,9 @@ export const ClientCoursesView: React.FC<ClientCoursesViewProps> = ({
                           <button
                             type="button"
                             onClick={() => openCourse(course)}
-                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white transition hover:border-indigo-400/40 hover:bg-indigo-500/10"
+                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-xs font-black text-white transition hover:border-indigo-400/40 hover:bg-indigo-500/10"
                           >
-                            {completed
-                              ? "Revoir le cours"
-                              : progress > 0
-                                ? "Continuer"
-                                : "Commencer"}{" "}
+                            {completed ? "Revoir" : progress > 0 ? "Continuer" : "Commencer"}{" "}
                             <ChevronRight className="size-3.5" />
                           </button>
                         </div>

@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { BookOpen, ChevronLeft, ChevronRight, Download, X } from "lucide-react";
+import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { getOfferFileUrl } from "../../services/supabaseStorageService";
 import { getUserFacingErrorMessage } from "../../utils/userFacingError";
+import {
+  getCompletedCourseLessonIds,
+  getCourseLessonIds,
+  markCourseLessonCompleted,
+} from "../../utils/courseProgress";
 
 interface CourseChapter {
   id?: string;
@@ -46,6 +51,7 @@ interface ReaderCourse {
 
 interface CourseReaderModalProps {
   course: ReaderCourse;
+  progressScopeId?: string;
   onClose: () => void;
   onDownloadAttachment: (course: ReaderCourse) => void;
 }
@@ -71,6 +77,7 @@ function getYoutubeEmbedUrl(url?: string): string | null {
 
 export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
   course,
+  progressScopeId,
   onClose,
   onDownloadAttachment,
 }) => {
@@ -87,7 +94,9 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
           course.chapterContents?.[index] ||
           (typeof chapter === "object" ? chapter.content || "" : ""),
         ...(typeof chapter === "object" && chapter.videoUrl ? { videoUrl: chapter.videoUrl } : {}),
-        ...(typeof chapter === "object" && chapter.videoStorageKey ? { videoStorageKey: chapter.videoStorageKey } : {}),
+        ...(typeof chapter === "object" && chapter.videoStorageKey
+          ? { videoStorageKey: chapter.videoStorageKey }
+          : {}),
       }));
     }
     const courseModules = course.courseModules || [];
@@ -115,6 +124,12 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(() =>
+    getCompletedCourseLessonIds(course.id, progressScopeId),
+  );
+  const courseLessonIds = getCourseLessonIds(course);
+  const singleVideoLessonId =
+    !chapters.length && courseLessonIds.length === 1 ? courseLessonIds[0] : undefined;
   const safeActiveChapterIndex = chapters.length
     ? Math.min(Math.max(activeChapterIndex, 0), chapters.length - 1)
     : 0;
@@ -125,17 +140,30 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
 
   useEffect(() => {
     setActiveChapterIndex(0);
-  }, [course?.id]);
+    setCompletedLessonIds(getCompletedCourseLessonIds(course.id, progressScopeId));
+  }, [course?.id, progressScopeId]);
+
+  const markLessonCompleted = (lessonId: string) => {
+    setCompletedLessonIds(markCourseLessonCompleted(course.id, lessonId, progressScopeId));
+  };
 
   useEffect(() => {
     let active = true;
     setVideoUrl(null);
     setVideoError(null);
     if (!activeVideoSource || /^https?:\/\//i.test(activeVideoSource)) return;
-    getOfferFileUrl(activeVideoSource).then((url) => { if (active) setVideoUrl(url); }).catch((error) => { if (active) setVideoError(getUserFacingErrorMessage(error, "La vidéo ne peut pas être ouverte.")); });
-    return () => { active = false; };
+    getOfferFileUrl(activeVideoSource)
+      .then((url) => {
+        if (active) setVideoUrl(url);
+      })
+      .catch((error) => {
+        if (active)
+          setVideoError(getUserFacingErrorMessage(error, "La vidéo ne peut pas être ouverte."));
+      });
+    return () => {
+      active = false;
+    };
   }, [activeVideoSource]);
-
 
   return (
     <div
@@ -177,6 +205,11 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
                 controls
                 playsInline
                 preload="metadata"
+                onEnded={() => {
+                  if (!activeChapter && singleVideoLessonId) {
+                    markLessonCompleted(singleVideoLessonId);
+                  }
+                }}
               />
             ) : youtubeEmbedUrl ? (
               <iframe
@@ -229,13 +262,20 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
                 </button>
                 <button
                   type="button"
-                  disabled={safeActiveChapterIndex >= chapters.length - 1}
-                  onClick={() =>
-                    setActiveChapterIndex((index) => Math.min(chapters.length - 1, index + 1))
-                  }
+                  onClick={() => {
+                    markLessonCompleted(activeChapter.id);
+                    if (safeActiveChapterIndex >= chapters.length - 1) {
+                      onClose();
+                    } else {
+                      setActiveChapterIndex((index) => Math.min(chapters.length - 1, index + 1));
+                    }
+                  }}
                   className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold hover:bg-indigo-500 disabled:opacity-40"
                 >
-                  Suivant <ChevronRight className="size-4" />
+                  {safeActiveChapterIndex >= chapters.length - 1 ? "Terminer le cours" : "Suivant"}
+                  {safeActiveChapterIndex < chapters.length - 1 && (
+                    <ChevronRight className="size-4" />
+                  )}
                 </button>
               </div>
             </article>
@@ -246,6 +286,19 @@ export const CourseReaderModal: React.FC<CourseReaderModalProps> = ({
               Le cours ne contient pas encore de chapitre, de texte ou de vidéo publiés. Le créateur
               doit ajouter le contenu depuis son espace de gestion.
             </div>
+          )}
+
+          {!activeChapter && singleVideoLessonId && (
+            <button
+              type="button"
+              onClick={() => markLessonCompleted(singleVideoLessonId)}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-400/15"
+            >
+              <CheckCircle2 className="size-4" />
+              {completedLessonIds.includes(singleVideoLessonId)
+                ? "Cours terminé"
+                : "Marquer comme terminé"}
+            </button>
           )}
 
           {course?.attachmentStorageKey && (

@@ -4194,6 +4194,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
       {isCourseModalOpen && (
         <ClientCoursesView
           companyName={currentSub.companyName}
+          progressScopeId={user?.uid || user?.email}
           loading={memberPurchasedOffersLoading}
           courses={authorizedCourses as any}
           lockedCourses={otherCompanyCourses as any}
@@ -4209,6 +4210,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
       {selectedCourse && (
         <CourseReaderModal
           course={selectedCourse}
+          progressScopeId={user?.uid || user?.email}
           onClose={() => setSelectedCourse(null)}
           onDownloadAttachment={handleDownloadCourseAttachment}
         />
