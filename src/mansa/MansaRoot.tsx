@@ -79,6 +79,66 @@ function ViewportMetrics() {
   return null;
 }
 
+function CopyFeedbackToast() {
+  const [message, setMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const handleCopySuccess = (event: Event) => {
+      const text = String((event as CustomEvent<{ text?: string }>).detail?.text || "");
+      setMessage(/^https?:\/\//i.test(text) ? "Lien copié" : "Copié dans le presse-papiers");
+      window.setTimeout(() => setMessage(null), 2500);
+    };
+
+    window.addEventListener("mansa:copy-success", handleCopySuccess);
+    return () => window.removeEventListener("mansa:copy-success", handleCopySuccess);
+  }, []);
+
+  React.useEffect(() => {
+    const clipboard = navigator.clipboard;
+    if (!clipboard?.writeText) return;
+
+    const originalWriteText = clipboard.writeText.bind(clipboard);
+    const trackedWriteText = async (text: string) => {
+      const result = await originalWriteText(text);
+      window.dispatchEvent(new CustomEvent("mansa:copy-success", { detail: { text } }));
+      return result;
+    };
+
+    try {
+      Object.defineProperty(clipboard, "writeText", {
+        configurable: true,
+        writable: true,
+        value: trackedWriteText,
+      });
+    } catch {
+      return;
+    }
+
+    return () => {
+      try {
+        Object.defineProperty(clipboard, "writeText", {
+          configurable: true,
+          writable: true,
+          value: originalWriteText,
+        });
+      } catch {
+        // The browser may expose a non-configurable clipboard method.
+      }
+    };
+  }, []);
+
+  if (!message) return null;
+
+  return (
+    <div className="mansa-copy-toast fixed bottom-6 right-6 z-[120] animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-none">
+      <div role="status" aria-live="polite" className="flex items-center gap-2.5 rounded-xl border px-4 py-3 shadow-2xl">
+        <span className="mansa-copy-toast-icon">✓</span>
+        <span className="text-sm font-semibold">{message}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function MansaRoot({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = React.useState(true);
 
@@ -110,6 +170,7 @@ export default function MansaRoot({ children }: { children: React.ReactNode }) {
       >
         <ViewportMetrics />
         {children}
+        <CopyFeedbackToast />
       </div>
     </RootErrorBoundary>
   );

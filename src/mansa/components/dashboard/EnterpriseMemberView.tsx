@@ -827,7 +827,6 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
   const [optionsDropdownOpen, setOptionsDropdownOpen] = useState(false);
   const [isManageMembershipModalOpen, setIsManageMembershipModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [copiedLinkToast, setCopiedLinkToast] = useState(false);
   const [expandedCommentPosts, setExpandedCommentPosts] = useState<Record<string, boolean>>({});
   const [isEbookModalOpen, setIsEbookModalOpen] = useState(false);
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
@@ -2918,9 +2917,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                               onClick={() => {
                                 const publicUrl = window.location.href;
                                 navigator.clipboard.writeText(publicUrl);
-                                setCopiedLinkToast(true);
                                 setOptionsDropdownOpen(false);
-                                setTimeout(() => setCopiedLinkToast(false), 3000);
                               }}
                               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-zinc-200 hover:bg-white/10 hover:text-white transition-colors text-left cursor-pointer"
                             >
@@ -4158,24 +4155,6 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
         onClose={() => setIsReportModalOpen(false)}
         companyName={currentSub.companyName || subscription.companyName}
       />
-
-      {/* Toast de confirmation pour les liens copiés */}
-      {(copiedLinkToast || isAffiliateLinkCopied) && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-none"
-        >
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-zinc-900 border border-emerald-500/30 text-white shadow-2xl shadow-black/80">
-            <span className="text-base">✅</span>
-            <span className="text-sm font-semibold">
-              {isAffiliateLinkCopied
-                ? "Lien d’affiliation copié dans le presse-papiers"
-                : "Lien copié"}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Notification Toasts pour Téléchargement E-book & Accès Formation */}
       {ebookDownloadToast && (
