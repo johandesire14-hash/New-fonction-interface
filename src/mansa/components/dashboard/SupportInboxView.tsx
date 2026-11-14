@@ -1,8 +1,29 @@
 import React, { useMemo, useState } from "react";
 import { ArrowLeft, MessageSquare, Search, Send, UserRound } from "lucide-react";
 
-const formatMessageTime = (value?: string) => value ? new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "";
-const messageDayLabel = (value?: string) => { if (!value) return ""; const date = new Date(value); const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime(); const diff = Math.round((start-day)/86400000); if (diff===0) return "Aujourd’hui"; if (diff===1) return "Hier"; return new Intl.DateTimeFormat("fr-FR", { day:"numeric", month:"long", year:"numeric" }).format(date); };
+const formatMessageTime = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(date);
+};
+const messageDayLabel = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diff = Math.round((start - day) / 86400000);
+  if (diff === 0) return "Aujourd’hui";
+  if (diff === 1) return "Hier";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+};
 
 export interface SupportInboxMessage {
   id: string;
