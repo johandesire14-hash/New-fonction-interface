@@ -57,13 +57,13 @@ export const SupportInboxView: React.FC<SupportInboxViewProps> = ({
       .filter(
         (conversation) =>
           !query ||
-          `${conversation.memberName} ${conversation.memberEmail} ${conversation.messages.at(-1)?.text || ""}`
+          `${conversation.memberName} ${conversation.memberEmail} ${conversation.messages[conversation.messages.length - 1]?.text || ""}`
             .toLowerCase()
             .includes(query),
       )
       .sort((a, b) => {
-        const aLast = a.messages.at(-1)?.id || "";
-        const bLast = b.messages.at(-1)?.id || "";
+        const aLast = a.messages[a.messages.length - 1]?.id || "";
+        const bLast = b.messages[b.messages.length - 1]?.id || "";
         return sortOrder === "recent"
           ? bLast.localeCompare(aLast)
           : aLast.localeCompare(bLast);
@@ -149,7 +149,7 @@ export const SupportInboxView: React.FC<SupportInboxViewProps> = ({
               </div>
             ) : (
               visibleConversations.map((conversation) => {
-                const last = conversation.messages.at(-1);
+                const last = conversation.messages[conversation.messages.length - 1];
                 const isSelected = selectedConversationId === conversation.id;
                 return (
                   <button
