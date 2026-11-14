@@ -105,23 +105,7 @@ export const CheckoutPreviewModal: React.FC<CheckoutPreviewModalProps> = ({
         className="mansa-modal-viewport mansa-keyboard-scroll max-h-[92vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#101012] text-white shadow-2xl"
       >
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-[#101012]/95 px-4 py-3 backdrop-blur sm:px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="size-9 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5">
-              {productImage ? (
-                <img src={productImage} alt="" className="size-full object-cover" />
-              ) : (
-                <span className="flex size-full items-center justify-center text-xs font-bold text-zinc-200">
-                  {companyInitials}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-zinc-300">{companyName}</p>
-              <h2 id="checkout-preview-title" className="truncate text-sm font-bold text-white">
-                {productName}
-              </h2>
-            </div>
-          </div>
+          <div className="min-w-0" />
           <button
             type="button"
             onClick={onClose}
