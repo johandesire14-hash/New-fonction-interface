@@ -5,6 +5,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --mansa-icon-color: oklch(0.91 0.01 285);
+}
+
+/*
+ * Interface icons follow the neutral light-gray tone used in account settings.
+ * Brand SVGs with explicit fills (for example Telegram and Discord) keep their
+ * official colors because this rule only changes currentColor-based icons.
+ */
+.mansa-dark svg {
+  color: var(--mansa-icon-color);
+}
+
 /*
  * Design system definition.
  *
