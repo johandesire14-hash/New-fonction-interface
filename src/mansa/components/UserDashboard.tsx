@@ -59,6 +59,9 @@ import {
   Headphones,
   MessageSquare,
 } from "lucide-react";
+const formatMessageTime = (value?: string) => value ? new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "";
+const messageDayLabel = (value?: string) => { if (!value) return ""; const date = new Date(value); const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(); const day = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime(); const diff = Math.round((start-day)/86400000); if (diff===0) return "Aujourd’hui"; if (diff===1) return "Hier"; return new Intl.DateTimeFormat("fr-FR", { day:"numeric", month:"long", year:"numeric" }).format(date); };
+
 import { useAuth } from "../context/AuthContext";
 import { safeStorage } from "../utils/storage";
 import { getUserFacingErrorMessage } from "../utils/userFacingError";
@@ -3951,13 +3954,16 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               </button>
                             </div>
                             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
-                              {conversation.messages.map((item: any) => {
+                              {conversation.messages.map((item: any, index: number) => {
                                 const mine =
                                   item.sender ===
                                   (activeWorkspaceId === "personnel" ? "member" : "creator");
+                                const previous = conversation.messages[index - 1];
                                 return (
+                                  <React.Fragment key={item.id}>
+                                    {(!previous || messageDayLabel(previous.time) !== messageDayLabel(item.time)) && <div className="py-2 text-center text-[10px] font-medium text-zinc-500">{messageDayLabel(item.time)}</div>}
                                   <div
-                                    key={item.id}
+                                    key={`${item.id}-bubble`}
                                     className={`flex ${mine ? "justify-end" : "justify-start"}`}
                                   >
                                     <div
@@ -3967,10 +3973,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                       <div
                                         className={`mt-1 text-[10px] ${mine ? "text-emerald-950" : "text-zinc-500"}`}
                                       >
-                                        {item.time}
+                                        {formatMessageTime(item.time)}
                                       </div>
                                     </div>
                                   </div>
+                                  </React.Fragment>
                                 );
                               })}
                             </div>
