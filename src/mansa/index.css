@@ -789,15 +789,21 @@ html:not(.dark) .mansa-palette:not(:has(.afhub-home)) textarea::placeholder {
 }
 
 /* Light mode heading rule: titles and subtitles are always pure black. */
-html:not(.dark) .mansa-palette :is(h1, h2, h3, h4, h5, h6),
-html:not(.dark) .mansa-palette [class*="subtitle"],
-html:not(.dark) .mansa-palette [class*="sub-title"] {
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) :is(h1, h2, h3, h4, h5, h6),
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [role="heading"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="subtitle"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [class*="sub-title"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) [data-title],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .font-heading {
   color: #000000 !important;
 }
 
-.mansa-light :is(h1, h2, h3, h4, h5, h6),
-.mansa-light [class*="subtitle"],
-.mansa-light [class*="sub-title"] {
+.mansa-light:not(:has(.afhub-home)) :is(h1, h2, h3, h4, h5, h6),
+.mansa-light:not(:has(.afhub-home)) [role="heading"],
+.mansa-light:not(:has(.afhub-home)) [class*="subtitle"],
+.mansa-light:not(:has(.afhub-home)) [class*="sub-title"],
+.mansa-light:not(:has(.afhub-home)) [data-title],
+.mansa-light:not(:has(.afhub-home)) .font-heading {
   color: #000000 !important;
 }
 
