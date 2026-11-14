@@ -1695,6 +1695,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         ? bLast.localeCompare(aLast)
         : aLast.localeCompare(bLast);
     });
+  const getPrivateConversationParticipantId = (conversation: any) =>
+    conversation.creator_id === user?.uid ? conversation.member_id : conversation.creator_id;
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = newChatInput.trim();
@@ -3883,12 +3885,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                 type="button"
                                 onClick={() =>
                                   setViewedPrivateProfile({
-                                    userId:
-                                      activeWorkspaceId === "personnel"
-                                        ? conversation.creator_id
-                                        : conversation.member_id,
+                                    userId: getPrivateConversationParticipantId(conversation),
                                     name: conversation.memberName,
-                                    email: conversation.memberEmail,
+                                    email: conversation.participantUsername || conversation.memberEmail,
                                   })
                                 }
                                 className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#252830] text-xs font-bold text-white hover:ring-2 hover:ring-emerald-400/50"
@@ -3900,12 +3899,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                                 type="button"
                                 onClick={() =>
                                   setViewedPrivateProfile({
-                                    userId:
-                                      activeWorkspaceId === "personnel"
-                                        ? conversation.creator_id
-                                        : conversation.member_id,
+                                    userId: getPrivateConversationParticipantId(conversation),
                                     name: conversation.memberName,
-                                    email: conversation.memberEmail,
+                                    email: conversation.participantUsername || conversation.memberEmail,
                                   })
                                 }
                                 className="min-w-0 text-left"
