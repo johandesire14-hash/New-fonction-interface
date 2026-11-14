@@ -15,6 +15,7 @@ import {
   formatPhoneNumber,
   normalizePhoneNumber,
 } from "../../utils/phoneValidationRules";
+import { BrandLogo } from "../common/BrandLogo";
 
 // Ordre des indicatifs conformes aux spécifications du cahier des charges
 const ORDERED_DIAL_CODES = ["+221", "+242", "+243", "+225", "+237", "+229", "+250"];
@@ -181,10 +182,7 @@ export const MobileMoneyPaymentForm: React.FC<MobileMoneyPaymentFormProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className="size-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: op.brandColor || "#FFCC00" }}
-                  />
+                  <BrandLogo name={op.id} className="size-8" />
                   <span>{op.name}</span>
                 </div>
                 {isSelected && (

@@ -36,6 +36,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { ModalOverlay } from "../common/ModalOverlay";
 import { WithdrawalRequestModal } from "../common/WithdrawalRequestModal";
+import { BrandLogo, getOperatorLogoName } from "../common/BrandLogo";
 import { AnimatedNumber } from "../common/AnimatedNumber";
 import {
   subscribeToCreatorTransactions,
@@ -1171,7 +1172,9 @@ Document généré électroniquement, faisant foi de bordereau officiel de règl
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="size-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
-                      {method.type.includes("bank") ? (
+                      {getOperatorLogoName(method.type) ? (
+                        <BrandLogo name={getOperatorLogoName(method.type)!} className="size-9" />
+                      ) : method.type.includes("bank") ? (
                         <Building2 className="size-4 text-sky-400" />
                       ) : method.type.includes("crypto") ? (
                         <Wallet className="size-4 text-amber-400" />

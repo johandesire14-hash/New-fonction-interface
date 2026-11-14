@@ -6,8 +6,8 @@
  */
 
 export interface OperatorConfig {
-  id: string; // e.g. "mtn", "airtel", "orange", "wave", "moov", "free", "vodacom"
-  name: string; // e.g. "MTN", "Airtel", "Orange", "Wave", "Moov", "Free", "Vodacom / M-Pesa"
+  id: string; // e.g. "mtn", "airtel", "orange", "wave", "moov", "free", "mpesa"
+  name: string; // e.g. "MTN", "Airtel", "Orange", "Wave", "Moov", "Free", "M-Pesa"
   brandColor?: string;
   prefixes: string[]; // authorized prefixes
   nationalLength: number; // e.g. 9 or 10 digits
@@ -272,15 +272,15 @@ export const DIAL_CODE_CONFIGS: Record<string, DialCodeConfig> = {
         description: "Orange Money RDC (80, 84, 85, 89) · CDF/USD",
       },
       {
-        id: "vodacom",
-        name: "Vodacom / M-Pesa",
+        id: "mpesa",
+        name: "M-Pesa",
         brandColor: "#E60000",
         prefixes: ["81", "82", "83"],
         nationalLength: 9,
         format: "81 XXX XX XX",
         formatGroups: [2, 3, 2, 2],
         allowedCurrencies: ["CDF", "USD"],
-        description: "Vodacom M-Pesa RDC (81, 82, 83) · CDF/USD",
+        description: "M-Pesa RDC (81, 82, 83) · CDF/USD",
       },
     ],
   },

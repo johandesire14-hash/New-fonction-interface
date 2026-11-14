@@ -16,6 +16,7 @@ import {
 import { Company } from "../types";
 import { CurrencyCode, SUPPORTED_CURRENCIES } from "../utils/currency";
 import { useModalDismiss } from "../hooks/useModalDismiss";
+import { BrandLogo, getOperatorLogoName } from "./common/BrandLogo";
 
 interface CompanyOnboardingModalProps {
   isOpen: boolean;
@@ -312,6 +313,7 @@ export const CompanyOnboardingModal: React.FC<CompanyOnboardingModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               {AVAILABLE_PAYMENTS.map((payment) => {
                 const isSelected = acceptedPayments.includes(payment.id);
+                const operatorLogoName = getOperatorLogoName(payment.id);
                 return (
                   <button
                     type="button"
@@ -322,9 +324,13 @@ export const CompanyOnboardingModal: React.FC<CompanyOnboardingModalProps> = ({
                         ? `${payment.color} border-current shadow-sm`
                         : "border-white/10 bg-[#0c0d10] text-zinc-400 hover:border-white/20 hover:text-zinc-200"
                     }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-base select-none shrink-0">{payment.iconText}</span>
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                      {operatorLogoName ? (
+                        <BrandLogo name={operatorLogoName} className="size-8" />
+                      ) : (
+                        <span className="text-base select-none shrink-0">{payment.iconText}</span>
+                      )}
                       <div className="min-w-0">
                         <span className="font-bold block text-xs truncate text-white">
                           {payment.name}

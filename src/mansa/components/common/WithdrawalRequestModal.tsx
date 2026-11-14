@@ -25,6 +25,7 @@ import {
   WithdrawalRequest,
 } from "../../types";
 import { ModalOverlay } from "./ModalOverlay";
+import { BrandLogo, getOperatorLogoName } from "./BrandLogo";
 
 interface WithdrawalRequestModalProps {
   isOpen: boolean;
@@ -495,12 +496,19 @@ export const WithdrawalRequestModal: React.FC<WithdrawalRequestModalProps> = ({
                     {!WITHDRAWAL_OPERATOR_IDS[method.id] && (
                       <Lock className="size-5 shrink-0 text-zinc-600" />
                     )}
-                    <span
-                      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-black text-white"
-                      style={{ backgroundColor: method.color }}
-                    >
-                      {method.name.slice(0, 2).toUpperCase()}
-                    </span>
+                    {getOperatorLogoName(method.id) ? (
+                      <BrandLogo
+                        name={getOperatorLogoName(method.id)!}
+                        className="size-8"
+                      />
+                    ) : (
+                      <span
+                        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-black text-white"
+                        style={{ backgroundColor: method.color }}
+                      >
+                        {method.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                       {method.name}
                     </span>

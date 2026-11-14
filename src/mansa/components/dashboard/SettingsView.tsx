@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { AccountSettingsModal } from "../common/AccountSettingsModal";
 import { DEFAULT_PAYMENT_METHODS, PaymentMethodsTemplate } from "../common/PaymentMethodsTemplate";
+import { BrandLogo } from "../common/BrandLogo";
 import {
   getUserProfile,
   updateUserProfile,
@@ -874,12 +875,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111318] p-5 shadow-2xl">
                 <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
                   <div className="flex items-center gap-3">
-                    <span
-                      className="flex size-10 items-center justify-center rounded-xl text-xs font-black text-white"
-                      style={{ backgroundColor: selectedPaymentMethod.color }}
-                    >
-                      {selectedPaymentMethod.name.slice(0, 2).toUpperCase()}
-                    </span>
                     <div>
                       <h3 className="text-base font-bold text-white">
                         Configurer {selectedPaymentMethod.name}
@@ -1068,11 +1063,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           {isWaveConfigOpen && (
             <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
               <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111318] p-5 shadow-2xl">
-                <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
+                  <div className="flex items-start justify-between gap-3 border-b border-white/10 pb-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-[#1DC3FD]/15 text-[#1DC3FD]">
-                      <Smartphone className="size-5" />
-                    </div>
+                    <BrandLogo name="wave" className="size-10" />
                     <div>
                       <h3 className="text-base font-bold text-white">Configurer Wave</h3>
                       <p className="mt-0.5 text-xs text-zinc-400">
