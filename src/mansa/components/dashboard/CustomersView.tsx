@@ -345,7 +345,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       setMessageSuccess(true);
       window.setTimeout(() => setMessageSuccess(false), 3500);
     } catch (error) {
-      console.error("Impossible d’envoyer le message privé:", error);
+      console.error("Impossible d’envoyer le message:", error);
       setToast("Impossible d’envoyer le message pour le moment. Réessayez.");
     } finally {
       setIsSendingMessage(false);

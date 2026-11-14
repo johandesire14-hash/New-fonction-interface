@@ -1661,7 +1661,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("Impossible de charger les messages privés:", error);
+          console.error("Impossible de charger les messages:", error);
         }
       }
     };
@@ -1737,7 +1737,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
           })),
       );
     } catch (error) {
-      console.error("Envoi du message privé impossible:", error);
+      console.error("Envoi du message impossible:", error);
     }
   };
 
@@ -2180,7 +2180,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                       )}
                     </button>
 
-                    {/* Messages privés */}
+                    {/* Message */}
                     <button
                       onClick={() => switchTab("messages")}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
@@ -2623,7 +2623,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                           )}
                         </button>
 
-                        {/* Messages privés */}
+                        {/* Message */}
                         <button
                           onClick={() => switchTab("messages")}
                           className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
@@ -3808,7 +3808,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         <MessageSquare className="size-5" />
                       </div>
                       <div>
-                        <h1 className="text-sm font-bold text-white">Messages privés</h1>
+                        <h1 className="text-sm font-bold text-white">Message</h1>
                         <p className="text-[11px] text-zinc-500">
                           Conversations privées de la communauté
                         </p>

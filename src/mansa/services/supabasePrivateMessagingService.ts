@@ -80,7 +80,7 @@ export async function fetchPrivateConversations(): Promise<PrivateConversation[]
     .select("*")
     .in("conversation_id", ids)
     .order("created_at", { ascending: true });
-  if (messageError) throwSupabaseError("charger vos messages privés", messageError);
+  if (messageError) throwSupabaseError("charger vos messages", messageError);
 
   const messagesByConversation = new Map<string, PrivateMessageRow[]>();
   for (const message of (messages || []) as PrivateMessageRow[]) {
@@ -160,7 +160,7 @@ export async function sendPrivateMessage(input: {
     .insert({ conversation_id: input.conversationId, sender_id: session.user.id, body })
     .select("*")
     .single();
-  if (error) throwSupabaseError("envoyer le message privé", error);
+  if (error) throwSupabaseError("envoyer le message", error);
   return data as PrivateMessageRow;
 }
 
@@ -172,5 +172,5 @@ export async function markPrivateConversationAsRead(conversationId: string): Pro
     .eq("conversation_id", conversationId)
     .neq("sender_id", session.user.id)
     .is("read_at", null);
-  if (error) throwSupabaseError("marquer les messages privés comme lus", error);
+  if (error) throwSupabaseError("marquer les messages comme lus", error);
 }
