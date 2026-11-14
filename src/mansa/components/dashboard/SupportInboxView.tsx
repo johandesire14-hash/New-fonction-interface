@@ -90,7 +90,7 @@ export const SupportInboxView: React.FC<SupportInboxViewProps> = ({
 
   return (
     <div
-      className={`${safeAreaClass} mx-auto flex w-full ${heightClass} max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121316] animate-in fade-in duration-200`}
+      className={`mansa-support-inbox ${safeAreaClass} mx-auto flex w-full ${heightClass} max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121316] animate-in fade-in duration-200`}
     >
       <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#16171b] px-4 py-3 sm:px-5">
         <div className="flex items-center gap-3">

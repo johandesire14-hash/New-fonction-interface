@@ -43,6 +43,8 @@
 
 4.4. Les erreurs affichées doivent être fixes, claires, contextualisées et compréhensibles. Les messages métier validés peuvent être conservés.
 
+4.5. Il est interdit d’afficher directement dans l’interface une URL ou un lien brut vers une image. Une image doit être rendue via un aperçu visuel, un composant d’image ou une action clairement libellée ; son URL technique peut uniquement rester dans les données internes ou être copiée via une action dédiée si l’utilisateur le demande.
+
 ## Article 5 — Logos, marques et icônes d’applications
 
 5.1. Les logos de marque doivent utiliser `BrandLogo` ou un composant de marque dédié, avec leurs couleurs officielles.

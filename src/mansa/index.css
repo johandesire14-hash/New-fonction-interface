@@ -788,6 +788,63 @@ html:not(.dark) .mansa-palette:not(:has(.afhub-home)) textarea::placeholder {
   color: var(--mansa-light-muted) !important;
 }
 
+/* Light mode messaging: clear surfaces, readable fields, and green outgoing bubbles. */
+html:not(.dark) .mansa-support-inbox {
+  background: var(--mansa-light-surface) !important;
+  border-color: var(--mansa-light-border) !important;
+  color: var(--mansa-light-text);
+}
+
+html:not(.dark) .mansa-support-inbox > header,
+html:not(.dark) .mansa-support-inbox form {
+  background: var(--mansa-light-surface-raised) !important;
+  border-color: var(--mansa-light-border) !important;
+}
+
+html:not(.dark) .mansa-support-inbox aside,
+html:not(.dark) .mansa-support-inbox main,
+html:not(.dark) .mansa-support-inbox main > div {
+  border-color: var(--mansa-light-border) !important;
+}
+
+html:not(.dark) .mansa-support-inbox input,
+html:not(.dark) .mansa-support-inbox textarea,
+html:not(.dark) .mansa-support-inbox select {
+  background: var(--mansa-light-surface) !important;
+  border-color: var(--mansa-light-border) !important;
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-support-inbox input::placeholder,
+html:not(.dark) .mansa-support-inbox textarea::placeholder {
+  color: var(--mansa-light-muted) !important;
+}
+
+html:not(.dark) .mansa-support-inbox [class*="bg-white/[0.06]"],
+html:not(.dark) .mansa-support-inbox [class*="bg-white/[0.03]"] {
+  background: var(--mansa-light-surface-raised) !important;
+  color: var(--mansa-light-text) !important;
+}
+
+html:not(.dark) .mansa-support-inbox [class*="bg-blue-500"],
+html:not(.dark) .mansa-support-inbox [class*="bg-blue-500"][class*="text-white"],
+html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .mansa-support-inbox [class*="bg-blue-500"] {
+  background: #00d26a !important;
+  color: #000000 !important;
+}
+
+html:not(.dark) .mansa-support-inbox [class*="text-blue-100"] {
+  color: #075b35 !important;
+}
+
+html:not(.dark) .mansa-support-inbox [class*="text-blue-400"] {
+  color: #008f46 !important;
+}
+
+html:not(.dark) .mansa-support-inbox button:hover {
+  background-color: rgba(15, 23, 42, 0.06);
+}
+
 /* Light mode CTAs must remain visually prominent against white surfaces. */
 html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-primary,
 html:not(.dark) .mansa-palette:not(:has(.afhub-home)) .ui-btn-secondary,
