@@ -3019,15 +3019,15 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
             }
 
             {/* 3. NAVIGATION INTERNE : BARRE D'ONGLETS HORIZONTALE */}
-            {/* Comprenant "Accueil" (actif avec indicateur souligné en bleu), "Produits" et "Avis" */}
+            {/* Comprenant "Accueil", "Produits" et "Avis" */}
             <div className="mt-6 sm:mt-8 border-b border-white/[0.08] px-4 sm:px-8 lg:px-10 bg-[#0a0b0d] overflow-x-auto no-scrollbar">
               <nav className="flex items-center gap-6 sm:gap-8 -mb-px min-w-max">
-                {/* Onglet Accueil (actif par défaut avec indicateur souligné en bleu) */}
+                {/* Onglet Accueil (actif par défaut) */}
                 <button
                   onClick={() => setCompanyTab("accueil")}
                   className={`py-3.5 text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 relative ${
                     companyTab === "accueil"
-                      ? "text-white border-b-2 border-blue-500 font-bold"
+                      ? "text-white border-b-2 border-transparent font-bold"
                       : "text-zinc-400 hover:text-zinc-200 border-b-2 border-transparent"
                   }`}
                 >
@@ -3040,7 +3040,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                   onClick={() => setCompanyTab("produits")}
                   className={`py-3.5 text-sm transition-all cursor-pointer flex items-center gap-2 relative ${
                     companyTab === "produits"
-                      ? "text-white border-b-2 border-blue-500 font-bold"
+                      ? "text-white border-b-2 border-transparent font-bold"
                       : "text-zinc-400 hover:text-zinc-200 border-b-2 border-transparent"
                   }`}
                 >
@@ -3056,7 +3056,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                   onClick={() => setCompanyTab("avis")}
                   className={`py-3.5 text-sm transition-all cursor-pointer flex items-center gap-2 relative ${
                     companyTab === "avis"
-                      ? "text-white border-b-2 border-blue-500 font-bold"
+                      ? "text-white border-b-2 border-transparent font-bold"
                       : "text-zinc-400 hover:text-zinc-200 border-b-2 border-transparent"
                   }`}
                 >
@@ -3750,7 +3750,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
             onClick={() => setIsPostComposerOpen(true)}
             aria-label="Créer une publication"
             title="Créer une publication"
-            className="absolute bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl shadow-blue-950/50 transition-all hover:scale-105 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-[#08090b] cursor-pointer"
+            className="absolute bottom-6 right-6 z-30 flex size-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl shadow-blue-950/50 transition-all hover:scale-105 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-[#08090b] cursor-pointer"
           >
             <PenLine className="size-6" />
           </button>

@@ -303,10 +303,9 @@ button:not(.rounded-full),
   border-radius: 12px !important;
 }
 
-/* Keep the browser's default outline for keyboard focus, but avoid the blue
-   focus border that remains around rounded controls after pointer activation. */
-button:focus:not(:focus-visible),
-[role="button"]:focus:not(:focus-visible) {
+/* Remove the browser-default focus outline from rounded interactive controls. */
+button:focus,
+[role="button"]:focus {
   outline: none;
 }
 
