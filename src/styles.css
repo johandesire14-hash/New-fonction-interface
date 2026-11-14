@@ -18,6 +18,27 @@
   color: var(--mansa-icon-color);
 }
 
+/* Final light-theme override: headings stay black after utility generation. */
+html:not(.dark) .mansa-palette :is(h1, h2, h3, h4, h5, h6),
+html:not(.dark) .mansa-palette [class*="subtitle"],
+html:not(.dark) .mansa-palette [class*="sub-title"],
+html:not(.dark) .mansa-palette h1 + p,
+html:not(.dark) .mansa-palette h2 + p,
+html:not(.dark) .mansa-palette h3 + p {
+  color: #000000 !important;
+}
+
+@layer utilities {
+  .mansa-light :is(h1, h2, h3, h4, h5, h6),
+  .mansa-light [class*="subtitle"],
+  .mansa-light [class*="sub-title"],
+  .mansa-light h1 + p,
+  .mansa-light h2 + p,
+  .mansa-light h3 + p {
+    color: #000000 !important;
+  }
+}
+
 /*
  * Design system definition.
  *

@@ -32,5 +32,6 @@
 - En mode clair, les textes principaux doivent utiliser `var(--mansa-light-text)`, les textes secondaires `var(--mansa-light-muted)` et les icônes d’interface une teinte foncée lisible, par défaut `#334155`.
 - Ne laisser aucune classe `text-white`, `text-[#eeeeee]`, `text-[#f2f4f5]` ou équivalente sur une surface claire, sauf si elle est nécessaire sur un fond suffisamment contrasté et explicitement vérifié.
 - Adapter également les placeholders, bordures, états actifs, survols, focus, états désactivés et messages d’erreur/succès afin de maintenir un contraste lisible.
+- En mode clair, tous les titres et sous-titres (`h1` à `h6` et éléments explicitement identifiés comme sous-titres) doivent être noirs (`#000000`), y compris dans le dashboard, les paramètres, les modales et les pages publiques.
 - Vérifier visuellement le mode clair sur le dashboard, la connexion, les paramètres, les modales et les écrans secondaires, en desktop et en mobile. Une compilation réussie ne suffit pas.
 - Préserver les couleurs officielles des marques et les couleurs sémantiques d’état lorsqu’elles restent contrastées ; ne pas appliquer la couleur claire des icônes par-dessus leurs remplissages de marque explicites.
