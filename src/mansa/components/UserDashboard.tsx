@@ -2173,11 +2173,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                         <UsersIcon className="size-4 text-[#00D26A]" />
                         <span>{lang === "fr" ? "Communauté" : "Community"}</span>
                       </div>
-                      {memberSubscriptions.length > 0 && (
-                        <span className="text-[10px] font-mono text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 font-bold">
-                          {memberSubscriptions.length}
-                        </span>
-                      )}
                     </button>
 
                     {/* Message */}
@@ -2616,11 +2611,6 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                             <UsersIcon className="size-4 text-[#00D26A]" />
                             <span>{lang === "fr" ? "Communauté" : "Community"}</span>
                           </div>
-                          {memberSubscriptions.length > 0 && (
-                            <span className="text-[10px] font-mono text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 font-bold">
-                              {memberSubscriptions.length}
-                            </span>
-                          )}
                         </button>
 
                         {/* Message */}
@@ -2670,9 +2660,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                               {lang === "fr" ? "Affiliés" : "Affiliates"}
                             </span>
                           </div>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#0055ff]/20 text-[#6699ff]">
-                            Rejoindre
-                          </span>
+
                         </button>
                       </nav>
                     ) : (
