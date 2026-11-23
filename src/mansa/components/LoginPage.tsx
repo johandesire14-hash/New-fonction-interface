@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Mail, Lock, User, AlertCircle, ArrowRight } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { AfhubLogo } from "./AfhubLogo";
 import { useAuth } from "../context/AuthContext";
 import { getUserFacingErrorMessage } from "../utils/userFacingError";
@@ -26,6 +26,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(initialError || null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -223,13 +224,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               <div className="relative flex items-center">
                 <Lock className="absolute left-3.5 size-4 text-[#9ba3aa]" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-white/10 bg-[#1b1f23] pl-10 pr-4 py-2.5 text-xs text-[#f2f4f5] placeholder-[#9ba3aa] focus:border-[#3ddc84] outline-none transition-all"
+                  className="w-full rounded-xl border border-white/10 bg-[#1b1f23] pl-10 pr-11 py-2.5 text-xs text-[#f2f4f5] placeholder-[#9ba3aa] focus:border-[#3ddc84] outline-none transition-all"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  aria-pressed={showPassword}
+                  className="absolute right-3.5 inline-flex size-6 items-center justify-center text-[#9ba3aa] hover:text-[#f2f4f5] transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
               </div>
             </div>
 

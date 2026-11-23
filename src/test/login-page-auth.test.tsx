@@ -126,4 +126,44 @@ describe("LoginPage with Supabase Auth", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Votre session Supabase est absente ou a expiré");
   });
+
+  it("toggles password visibility from the login form", () => {
+    render(
+      <AuthProvider>
+        <LoginPage initialMode="login" lang="fr" onLoginSuccess={vi.fn()} />
+      </AuthProvider>,
+    );
+
+    const passwordInput = screen.getByPlaceholderText("••••••••");
+    expect(passwordInput).toHaveAttribute("type", "password");
+
+    fireEvent.click(screen.getByRole("button", { name: "Afficher le mot de passe" }));
+    expect(passwordInput).toHaveAttribute("type", "text");
+
+    fireEvent.click(screen.getByRole("button", { name: "Masquer le mot de passe" }));
+    expect(passwordInput).toHaveAttribute("type", "password");
+  });
+
+  it("sends a password-reset email from the login form", async () => {
+    render(
+      <AuthProvider>
+        <LoginPage initialMode="login" lang="fr" onLoginSuccess={vi.fn()} />
+      </AuthProvider>,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("nom@exemple.com"), {
+      target: { value: "user@mansa.app" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Mot de passe oublié ?" }));
+
+    await waitFor(() => {
+      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+        "user@mansa.app",
+        expect.objectContaining({ redirectTo: expect.stringContaining("/login") }),
+      );
+    });
+    expect(
+      await screen.findByText("Un lien de réinitialisation a été envoyé à votre adresse email."),
+    ).toBeInTheDocument();
+  });
 });
