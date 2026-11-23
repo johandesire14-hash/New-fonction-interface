@@ -3997,7 +3997,7 @@ export const EnterpriseMemberView: React.FC<EnterpriseMemberViewProps> = ({
                           );
                           setSelectedProductDetailOffer(null);
                         }}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0066FF] py-4 text-base font-black text-white shadow-xl hover:bg-[#0055EE]"
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--ui-action-primary)] py-4 text-base font-black text-black shadow-xl hover:bg-[var(--ui-action-primary-hover)]"
                       >
                         <span>
                           {TEMPORARY_FREE_ACCESS_ENABLED && !canManageCompany

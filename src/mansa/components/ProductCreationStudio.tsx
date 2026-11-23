@@ -1785,7 +1785,7 @@ export const ProductCreationStudio: React.FC<ProductCreationStudioProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsCheckoutPreviewOpen(true)}
-                      className="w-full py-4 rounded-2xl bg-[#0066FF] hover:bg-[#0055EE] text-white font-black text-base shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-4 rounded-2xl bg-[var(--ui-action-primary)] hover:bg-[var(--ui-action-primary-hover)] text-black font-black text-base shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       <span>{ctaButtonText || "Rejoindre maintenant"}</span>
                       <ArrowRight className="size-4" />

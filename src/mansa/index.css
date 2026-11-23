@@ -422,18 +422,37 @@ button:focus,
   letter-spacing: -0.025em;
 }
 
-/* Product-wide action color: blue dashboard CTAs become afhub green. */
-.mansa-dashboard button[class*="bg-[#0055ff"],
-.mansa-dashboard button[class*="bg-blue-"],
-.mansa-dashboard button[class*="bg-indigo-"] {
+/* Primary solid CTAs use afhub green; compact controls keep their secondary styling. */
+.mansa-dashboard
+  button:not([class*="h-6 w-11"]):not([class*="px-3 py-"]):not([class*="px-3.5 py-2"]):not([class*="text-[11px]"]):not([class*="py-1.5 px-3 rounded-xl"]):not([class*="gap-1.5 rounded-xl bg-[#0055ff"]):is(
+    [class*="bg-[#0055ff"],
+    [class*="bg-blue-600"],
+    [class*="bg-blue-500"],
+    [class*="bg-indigo-600"],
+    [class*="bg-indigo-500"],
+    [class*="bg-purple-600"],
+    [class*="bg-[#229ED9"],
+    [class*="bg-[#5865F2"]
+  ):not([class*="bg-blue-500/"]):not([class*="bg-indigo-500/"]):not([class*="bg-[#229ED9]/"]):not([class*="bg-[#5865F2]/"]) {
   background-color: var(--ui-action-primary) !important;
   border-color: var(--ui-action-primary) !important;
   color: #000000 !important;
 }
 
-.mansa-dashboard button[class*="hover:bg-[#0047d6"],
-.mansa-dashboard button[class*="hover:bg-blue-"],
-.mansa-dashboard button[class*="hover:bg-indigo-"] {
+.mansa-dashboard
+  button:not([class*="h-6 w-11"]):not([class*="px-3 py-"]):not([class*="px-3.5 py-2"]):not([class*="text-[11px]"]):not([class*="py-1.5 px-3 rounded-xl"]):not([class*="gap-1.5 rounded-xl bg-[#0055ff"]):is(
+    [class*="hover:bg-[#0047d6"],
+    [class*="hover:bg-blue-600"],
+    [class*="hover:bg-blue-500"],
+    [class*="hover:bg-blue-400"],
+    [class*="hover:bg-indigo-500"],
+    [class*="hover:bg-indigo-400"],
+    [class*="hover:bg-purple-500"],
+    [class*="hover:bg-[#1c8ec7"],
+    [class*="hover:bg-[#1c8ec4"],
+    [class*="hover:bg-[#1b8bc2"],
+    [class*="hover:bg-[#4752c4"]
+  ):not([class*="hover:bg-blue-500/"]):not([class*="hover:bg-purple-500/"]):not([class*="bg-[#229ED9]/"]):not([class*="bg-[#5865F2]/"]) {
   background-color: var(--ui-action-primary-hover) !important;
 }
 
